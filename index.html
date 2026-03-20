@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Situation Monitor</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="masthead">
+        <div>
+          <p class="kicker">REPRO+</p>
+          <h1>Situation Monitor</h1>
+        </div>
+        <div class="masthead-meta">
+          <span id="clock">--:--:--</span>
+          <span id="poll-state">Awaiting first sample</span>
+        </div>
+      </header>
+
+      <main class="dashboard">
+        <section class="panel gauge-panel live-panel reveal">
+          <div class="panel-head">
+            <p class="panel-label">Module 01</p>
+            <span class="status-light status-light--offline" id="module-01-status" aria-label="Module 01 offline"></span>
+          </div>
+          <div class="live-panel__intro">
+            <div>
+              <span class="live-panel__headline" id="sensor-status">Awaiting first sample</span>
+              <span class="subtle" id="sensor-source">ESP32 feed / 192.168.1.135</span>
+            </div>
+            <div class="subtle" id="last-sample-age">No data</div>
+          </div>
+          <div class="detail-grid">
+            <div>
+              <span class="detail-term">Temperature</span>
+              <span class="detail-value" id="temperature-value">--</span>
+            </div>
+            <div>
+              <span class="detail-term">Humidity</span>
+              <span class="detail-value" id="humidity-value">--</span>
+            </div>
+            <div>
+              <span class="detail-term">CO2</span>
+              <span class="detail-value" id="co2-value">--</span>
+            </div>
+            <div>
+              <span class="detail-term">TVOC</span>
+              <span class="detail-value" id="voc-value">--</span>
+            </div>
+            <div>
+              <span class="detail-term">Comfort index</span>
+              <span class="detail-value" id="comfort-value">--</span>
+            </div>
+            <div>
+              <span class="detail-term">Payload fields</span>
+              <span class="detail-value" id="field-count">0</span>
+            </div>
+          </div>
+          <pre class="payload-preview" id="payload-preview">{}</pre>
+        </section>
+
+        <section class="panel bars-panel weather-panel reveal">
+          <div class="panel-head">
+            <p class="panel-label">Module 02</p>
+            <span class="status-light status-light--offline" id="module-02-status" aria-label="Module 02 offline"></span>
+          </div>
+          <div class="weather-panel__intro">
+            <div>
+              <span class="weather-panel__headline">Weather</span>
+              <span class="subtle" id="weather-location">Current location</span>
+            </div>
+            <div class="weather-panel__summary" id="weather-summary">Forecast unavailable</div>
+          </div>
+          <div class="forecast-list" id="forecast-list">
+            <div class="forecast-empty">Weather module standing by</div>
+          </div>
+          <div class="weather-panel__footer subtle" id="weather-status">Waiting for location access</div>
+        </section>
+
+        <section class="panel timing-panel placeholder-panel reveal">
+          <div class="panel-head">
+            <p class="panel-label">Module 03</p>
+            <span class="status-light status-light--offline" aria-label="Module 03 offline"></span>
+          </div>
+          <div class="placeholder-block">
+            <span class="placeholder-title">Reserved</span>
+            <span class="placeholder-copy">Timing or automation summary</span>
+          </div>
+        </section>
+
+        <section class="panel metric-panel placeholder-panel reveal">
+          <div class="panel-head">
+            <p class="panel-label">Module 04</p>
+            <span class="status-light status-light--offline" aria-label="Module 04 offline"></span>
+          </div>
+          <div class="placeholder-block">
+            <span class="placeholder-title">Reserved</span>
+            <span class="placeholder-copy">Historical trendline or alerts</span>
+          </div>
+        </section>
+
+        <section class="panel detail-panel placeholder-panel reveal">
+          <div class="panel-head">
+            <p class="panel-label">Module 05</p>
+            <span class="status-light status-light--offline" aria-label="Module 05 offline"></span>
+          </div>
+          <div class="placeholder-block">
+            <span class="placeholder-title">Reserved</span>
+            <span class="placeholder-copy">Future room telemetry or automation state</span>
+          </div>
+        </section>
+
+        <section class="panel action-panel placeholder-panel reveal">
+          <div class="panel-head">
+            <p class="panel-label">Module 06</p>
+            <span class="status-light status-light--offline" aria-label="Module 06 offline"></span>
+          </div>
+          <div class="placeholder-block">
+            <span class="placeholder-title">Reserved</span>
+            <span class="placeholder-copy">Controls, schedules, or ingest actions</span>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      window.SITUATION_MONITOR_CONFIG = {
+        refreshMs: 5000,
+        endpoint: "/api/air",
+        weatherEndpoint: "/api/weather",
+        weatherRefreshMs: 1800000
+      };
+    </script>
+    <script src="./app.js"></script>
+  </body>
+</html>
