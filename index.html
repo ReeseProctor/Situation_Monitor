@@ -28,7 +28,7 @@
           <div class="live-panel__intro">
             <div>
               <span class="live-panel__headline" id="sensor-status">Awaiting first sample</span>
-              <span class="subtle" id="sensor-source">ESP32 feed / 192.168.1.135</span>
+              <span class="subtle" id="sensor-source">ESP32 feed / 192.168.4.23</span>
             </div>
             <div class="subtle" id="last-sample-age">No data</div>
           </div>
@@ -79,14 +79,47 @@
           <div class="weather-panel__footer subtle" id="weather-status">Waiting for location access</div>
         </section>
 
-        <section class="panel timing-panel placeholder-panel reveal">
+        <section class="panel timing-panel wifi-panel reveal">
           <div class="panel-head">
             <p class="panel-label">Module 03</p>
-            <span class="status-light status-light--offline" aria-label="Module 03 offline"></span>
+            <span class="status-light status-light--offline" id="module-03-status" aria-label="Module 03 offline"></span>
           </div>
-          <div class="placeholder-block">
-            <span class="placeholder-title">Reserved</span>
-            <span class="placeholder-copy">Timing or automation summary</span>
+          <div class="wifi-panel__intro">
+            <div>
+              <span class="wifi-panel__headline" id="wifi-status">Preparing speed test</span>
+              <span class="subtle" id="wifi-note">Runs automatically on page load</span>
+            </div>
+            <div class="wifi-panel__speed" id="wifi-speed">--</div>
+          </div>
+          <div class="speedtest-panel">
+            <div class="speedtest-panel__head">
+              <span class="detail-term">Network quality test</span>
+              <span class="subtle" id="speedtest-status">Idle</span>
+            </div>
+            <div class="speedtest-metrics">
+              <div>
+                <span class="detail-term">Download</span>
+                <span class="detail-value" id="speedtest-download">--</span>
+              </div>
+              <div>
+                <span class="detail-term">Upload</span>
+                <span class="detail-value" id="speedtest-upload">--</span>
+              </div>
+              <div>
+                <span class="detail-term">Ping</span>
+                <span class="detail-value" id="speedtest-ping">--</span>
+              </div>
+              <div>
+                <span class="detail-term">Responsiveness</span>
+                <span class="detail-value" id="speedtest-rpm">--</span>
+              </div>
+            </div>
+          </div>
+          <div class="wifi-panel__footer">
+            <span class="subtle" id="wifi-last-check">Waiting for first result</span>
+            <div class="wifi-panel__actions">
+              <button class="panel-button panel-button--compact panel-button--ghost" id="wifi-speedtest-button" type="button">Run speed test</button>
+            </div>
           </div>
         </section>
 

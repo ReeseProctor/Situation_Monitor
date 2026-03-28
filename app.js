@@ -5,7 +5,9 @@ const state = {
   weatherRefreshMs: config.weatherRefreshMs || 1800000,
   sensorEndpoint: config.endpoint || "/api/air",
   weatherEndpoint: config.weatherEndpoint || "/api/weather",
+  wifiSpeedtestEndpoint: config.wifiSpeedtestEndpoint || "/api/wifi-speedtest",
   lastSensorAt: null,
+  speedtestRunning: false,
   sensorTimer: null,
   weatherTimer: null
 };
@@ -15,6 +17,7 @@ const elements = {
   pollState: document.querySelector("#poll-state"),
   module01Status: document.querySelector("#module-01-status"),
   module02Status: document.querySelector("#module-02-status"),
+  module03Status: document.querySelector("#module-03-status"),
   sensorStatus: document.querySelector("#sensor-status"),
   sensorSource: document.querySelector("#sensor-source"),
   fieldCount: document.querySelector("#field-count"),
@@ -28,7 +31,17 @@ const elements = {
   weatherLocation: document.querySelector("#weather-location"),
   weatherStatus: document.querySelector("#weather-status"),
   weatherSummary: document.querySelector("#weather-summary"),
-  forecastList: document.querySelector("#forecast-list")
+  forecastList: document.querySelector("#forecast-list"),
+  wifiStatus: document.querySelector("#wifi-status"),
+  wifiNote: document.querySelector("#wifi-note"),
+  wifiSpeed: document.querySelector("#wifi-speed"),
+  wifiLastCheck: document.querySelector("#wifi-last-check"),
+  wifiSpeedtestButton: document.querySelector("#wifi-speedtest-button"),
+  speedtestStatus: document.querySelector("#speedtest-status"),
+  speedtestDownload: document.querySelector("#speedtest-download"),
+  speedtestUpload: document.querySelector("#speedtest-upload"),
+  speedtestPing: document.querySelector("#speedtest-ping"),
+  speedtestRpm: document.querySelector("#speedtest-rpm")
 };
 
 function setModuleStatus(element, online, label) {
@@ -38,6 +51,17 @@ function setModuleStatus(element, online, label) {
 
   element.classList.toggle("status-light--online", online);
   element.classList.toggle("status-light--offline", !online);
+  element.classList.remove("status-light--sampling");
+  element.setAttribute("aria-label", label);
+}
+
+function setModuleSampling(element, label) {
+  if (!element) {
+    return;
+  }
+
+  element.classList.remove("status-light--online", "status-light--offline");
+  element.classList.add("status-light--sampling");
   element.setAttribute("aria-label", label);
 }
 
@@ -193,7 +217,7 @@ function renderSensorPayload(payload, reading, options = {}) {
   elements.sensorStatus.textContent = isFallback ? "Fallback sample active" : "ESP32 link active";
   elements.sensorSource.textContent = isFallback
     ? "Simulated data stream"
-    : "Live payload proxied from 192.168.1.135";
+    : "Live payload proxied from 192.168.4.23";
   elements.fieldCount.textContent = String(reading.fieldCount);
   elements.temperatureValue.textContent = formatValue(
     reading.temperatureDisplay,
@@ -359,6 +383,84 @@ async function loadWeather(lat, lon) {
   renderWeatherForecast(daily);
 }
 
+function renderWifiError(message) {
+  setModuleStatus(elements.module03Status, false, "Module 03 offline");
+  elements.wifiStatus.textContent = "Speed test unavailable";
+  elements.wifiNote.textContent = message;
+  elements.wifiSpeed.textContent = "--";
+  elements.wifiLastCheck.textContent = `Failed ${formatClock(new Date())}`;
+}
+
+function setSpeedtestButtonState(running) {
+  state.speedtestRunning = running;
+  elements.wifiSpeedtestButton.disabled = running;
+  elements.wifiSpeedtestButton.textContent = running ? "Running..." : "Run speed test";
+}
+
+function renderSpeedtestError(message) {
+  setModuleStatus(elements.module03Status, false, "Module 03 offline");
+  elements.wifiStatus.textContent = "Speed test unavailable";
+  elements.wifiNote.textContent = message;
+  elements.wifiSpeed.textContent = "--";
+  elements.speedtestStatus.textContent = message;
+  elements.speedtestDownload.textContent = "--";
+  elements.speedtestUpload.textContent = "--";
+  elements.speedtestPing.textContent = "--";
+  elements.speedtestRpm.textContent = "--";
+  elements.wifiLastCheck.textContent = `Failed ${formatClock(new Date())}`;
+}
+
+function renderSpeedtestPayload(payload) {
+  setModuleStatus(elements.module03Status, true, "Module 03 online");
+  elements.wifiStatus.textContent = "Speed test complete";
+  elements.wifiNote.textContent = payload.interface
+    ? `${String(payload.interface).toUpperCase()} / NETWORK QUALITY`
+    : "NETWORK QUALITY";
+  elements.wifiSpeed.textContent = formatValue(payload.download_mbps, " Mbps", 1);
+  elements.speedtestStatus.textContent = payload.tested_at
+    ? `Completed / ${payload.tested_at}`
+    : "Completed";
+  elements.speedtestDownload.textContent = formatValue(payload.download_mbps, " Mbps", 1);
+  elements.speedtestUpload.textContent = formatValue(payload.upload_mbps, " Mbps", 1);
+  elements.speedtestPing.textContent = formatValue(payload.latency_ms, " ms", 0);
+  elements.speedtestRpm.textContent = payload.responsiveness_rpm != null
+    ? `${Math.round(payload.responsiveness_rpm)} rpm`
+    : "--";
+  elements.wifiLastCheck.textContent = payload.tested_at
+    ? `Completed ${payload.tested_at}`
+    : `Completed ${formatClock(new Date())}`;
+}
+
+async function runWifiSpeedtest() {
+  if (state.speedtestRunning) {
+    return;
+  }
+
+  setSpeedtestButtonState(true);
+  elements.speedtestStatus.textContent = "Running networkQuality test";
+  setModuleSampling(elements.module03Status, "Module 03 speed test running");
+  elements.wifiStatus.textContent = "Running speed test";
+  elements.wifiNote.textContent = "This may take a few seconds";
+
+  try {
+    const response = await fetch(state.wifiSpeedtestEndpoint, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const payload = await response.json();
+    if (!payload.ok) {
+      throw new Error(payload.error || "Speed test failed");
+    }
+
+    renderSpeedtestPayload(payload);
+  } catch (error) {
+    renderSpeedtestError("Speed test unavailable");
+  } finally {
+    setSpeedtestButtonState(false);
+  }
+}
+
 function requestWeather() {
   if (!("geolocation" in navigator)) {
     renderWeatherError("Geolocation unavailable in this browser");
@@ -398,8 +500,13 @@ function startPolling() {
   state.weatherTimer = window.setInterval(requestWeather, state.weatherRefreshMs);
 }
 
+elements.wifiSpeedtestButton.addEventListener("click", () => {
+  runWifiSpeedtest();
+});
+
 updateClock();
 window.setInterval(updateClock, 1000);
 loadSensorData();
 requestWeather();
+runWifiSpeedtest();
 startPolling();

@@ -165,6 +165,13 @@ body::before {
   grid-template-rows: auto auto 1fr;
 }
 
+.wifi-panel {
+  grid-area: timing;
+  display: grid;
+  grid-template-rows: auto auto auto auto;
+  gap: 16px;
+}
+
 .metric-panel {
   grid-area: metric;
   display: grid;
@@ -264,6 +271,77 @@ body::before {
   line-height: 1.4;
 }
 
+.wifi-panel__intro {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: end;
+}
+
+.wifi-panel__intro > div {
+  display: grid;
+  gap: 8px;
+}
+
+.wifi-panel__headline {
+  font-size: 1.08rem;
+  text-transform: uppercase;
+}
+
+.wifi-panel__speed {
+  color: var(--text);
+  font-size: 1.25rem;
+  text-transform: uppercase;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.speedtest-panel {
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.speedtest-panel__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.speedtest-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+}
+
+.speedtest-metrics > div {
+  display: grid;
+  gap: 6px;
+}
+
+.wifi-panel__footer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.wifi-panel__actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
 .forecast-list {
   position: relative;
   z-index: 1;
@@ -349,6 +427,7 @@ body::before {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  align-self: start;
 }
 
 .status-light {
@@ -368,6 +447,11 @@ body::before {
 .status-light--offline {
   background: var(--alert-red);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 0 10px rgba(255, 90, 90, 0.45);
+}
+
+.status-light--sampling {
+  background: #f6cf6a;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 0 10px rgba(246, 207, 106, 0.45);
 }
 
 .gauge-wrap {
@@ -443,6 +527,12 @@ body::before {
 .value--large {
   font-size: clamp(2.3rem, 5vw, 4rem);
   line-height: 0.92;
+}
+
+.panel-button--compact {
+  width: auto;
+  padding: 10px 14px;
+  font-size: 0.78rem;
 }
 
 .subtle,
@@ -699,6 +789,11 @@ body::before {
     align-items: flex-start;
   }
 
+  .wifi-panel__intro {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .weather-panel__summary {
     text-align: left;
   }
@@ -710,5 +805,20 @@ body::before {
       ". temps"
       ". rain";
     align-items: start;
+  }
+
+  .speedtest-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .wifi-panel__footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .wifi-panel__actions {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
   }
 }

@@ -17,13 +17,13 @@ The dashboard proxies your ESP32 feed through `/api/air` to avoid browser cross-
 Default upstream:
 
 ```text
-http://192.168.1.135/data
+http://192.168.4.23/data
 ```
 
 Override it if needed:
 
 ```bash
-SITUATION_SENSOR_URL="http://192.168.1.135/data" python3 server.py
+SITUATION_SENSOR_URL="http://192.168.4.23/data" python3 server.py
 ```
 
 ## Weather module
