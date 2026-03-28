@@ -6,14 +6,23 @@ const state = {
   sensorEndpoint: config.endpoint || "/api/air",
   weatherEndpoint: config.weatherEndpoint || "/api/weather",
   wifiSpeedtestEndpoint: config.wifiSpeedtestEndpoint || "/api/wifi-speedtest",
+  layoutStorageKey: "situation-monitor-layout-v1",
   lastSensorAt: null,
+  layoutEdit: false,
+  draggedModuleId: null,
   speedtestRunning: false,
   sensorTimer: null,
   weatherTimer: null
 };
 
+const DEFAULT_LAYOUT_ORDER = Array.from(document.querySelectorAll(".dashboard > .panel[data-module-id]"))
+  .map((panel) => panel.dataset.moduleId);
+
 const elements = {
+  dashboard: document.querySelector("#dashboard"),
   clock: document.querySelector("#clock"),
+  layoutToggleButton: document.querySelector("#layout-toggle-button"),
+  layoutResetButton: document.querySelector("#layout-reset-button"),
   pollState: document.querySelector("#poll-state"),
   module01Status: document.querySelector("#module-01-status"),
   module02Status: document.querySelector("#module-02-status"),
@@ -43,6 +52,237 @@ const elements = {
   speedtestPing: document.querySelector("#speedtest-ping"),
   speedtestRpm: document.querySelector("#speedtest-rpm")
 };
+
+function getDashboardPanels() {
+  return Array.from(elements.dashboard.querySelectorAll(".panel[data-module-id]"));
+}
+
+function getCurrentModuleOrder() {
+  return getDashboardPanels().map((panel) => panel.dataset.moduleId);
+}
+
+function readStoredLayoutOrder() {
+  try {
+    const raw = window.localStorage.getItem(state.layoutStorageKey);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((value) => typeof value === "string") : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function normaliseLayoutOrder(order) {
+  const available = getCurrentModuleOrder();
+  const availableSet = new Set(available);
+  const seen = new Set();
+  const merged = [];
+
+  for (const moduleId of order) {
+    if (!availableSet.has(moduleId) || seen.has(moduleId)) {
+      continue;
+    }
+
+    seen.add(moduleId);
+    merged.push(moduleId);
+  }
+
+  for (const moduleId of available) {
+    if (seen.has(moduleId)) {
+      continue;
+    }
+
+    seen.add(moduleId);
+    merged.push(moduleId);
+  }
+
+  return merged;
+}
+
+function applyLayoutOrder(order) {
+  const panels = new Map(getDashboardPanels().map((panel) => [panel.dataset.moduleId, panel]));
+
+  for (const moduleId of order) {
+    const panel = panels.get(moduleId);
+    if (panel) {
+      elements.dashboard.appendChild(panel);
+    }
+  }
+}
+
+function persistLayoutOrder() {
+  try {
+    window.localStorage.setItem(state.layoutStorageKey, JSON.stringify(getCurrentModuleOrder()));
+  } catch (error) {
+    return;
+  }
+}
+
+function clearLayoutDragState() {
+  for (const panel of getDashboardPanels()) {
+    panel.classList.remove("panel--dragging", "panel--drop-before", "panel--drop-after");
+  }
+}
+
+function activeDashboardColumnCount() {
+  const template = window.getComputedStyle(elements.dashboard).gridTemplateColumns;
+  return template.split(" ").filter((value) => value !== "").length || 1;
+}
+
+function inferDropPosition(target, event) {
+  const rect = target.getBoundingClientRect();
+  const columns = activeDashboardColumnCount();
+
+  if (columns === 1) {
+    return event.clientY < rect.top + (rect.height / 2) ? "before" : "after";
+  }
+
+  return event.clientX < rect.left + (rect.width / 2) ? "before" : "after";
+}
+
+function updateLayoutControls() {
+  elements.dashboard.dataset.layoutEdit = state.layoutEdit ? "true" : "false";
+  elements.layoutToggleButton.textContent = state.layoutEdit ? "Finish rearranging" : "Rearrange modules";
+  elements.layoutToggleButton.setAttribute("aria-pressed", state.layoutEdit ? "true" : "false");
+  elements.layoutResetButton.disabled = state.layoutEdit;
+
+  for (const panel of getDashboardPanels()) {
+    panel.draggable = state.layoutEdit;
+  }
+}
+
+function setLayoutEdit(nextState) {
+  state.layoutEdit = nextState;
+  if (!nextState) {
+    state.draggedModuleId = null;
+    clearLayoutDragState();
+  }
+
+  updateLayoutControls();
+}
+
+function loadSavedLayout() {
+  const savedOrder = readStoredLayoutOrder();
+  const order = normaliseLayoutOrder(savedOrder.length ? savedOrder : DEFAULT_LAYOUT_ORDER);
+  applyLayoutOrder(order);
+  persistLayoutOrder();
+  updateLayoutControls();
+}
+
+function handlePanelDragStart(event) {
+  if (!state.layoutEdit) {
+    event.preventDefault();
+    return;
+  }
+
+  const panel = event.currentTarget;
+  state.draggedModuleId = panel.dataset.moduleId;
+  clearLayoutDragState();
+  panel.classList.add("panel--dragging");
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", state.draggedModuleId);
+}
+
+function handlePanelDragOver(event) {
+  if (!state.layoutEdit || !state.draggedModuleId) {
+    return;
+  }
+
+  const target = event.currentTarget;
+  if (target.dataset.moduleId === state.draggedModuleId) {
+    return;
+  }
+
+  event.preventDefault();
+  clearLayoutDragState();
+  const dragged = elements.dashboard.querySelector(`[data-module-id="${state.draggedModuleId}"]`);
+  if (dragged) {
+    dragged.classList.add("panel--dragging");
+  }
+
+  const position = inferDropPosition(target, event);
+  target.classList.add(position === "before" ? "panel--drop-before" : "panel--drop-after");
+}
+
+function handlePanelDrop(event) {
+  if (!state.layoutEdit || !state.draggedModuleId) {
+    return;
+  }
+
+  event.preventDefault();
+  const target = event.currentTarget;
+  if (target.dataset.moduleId === state.draggedModuleId) {
+    clearLayoutDragState();
+    return;
+  }
+
+  const dragged = elements.dashboard.querySelector(`[data-module-id="${state.draggedModuleId}"]`);
+  if (!dragged) {
+    clearLayoutDragState();
+    return;
+  }
+
+  const position = inferDropPosition(target, event);
+  if (position === "before") {
+    elements.dashboard.insertBefore(dragged, target);
+  } else {
+    elements.dashboard.insertBefore(dragged, target.nextSibling);
+  }
+
+  persistLayoutOrder();
+  clearLayoutDragState();
+}
+
+function handlePanelDragEnd() {
+  state.draggedModuleId = null;
+  clearLayoutDragState();
+}
+
+function handleDashboardDrop(event) {
+  if (!state.layoutEdit || !state.draggedModuleId || event.target !== elements.dashboard) {
+    return;
+  }
+
+  event.preventDefault();
+  const dragged = elements.dashboard.querySelector(`[data-module-id="${state.draggedModuleId}"]`);
+  if (!dragged) {
+    clearLayoutDragState();
+    return;
+  }
+
+  elements.dashboard.appendChild(dragged);
+  persistLayoutOrder();
+  clearLayoutDragState();
+}
+
+function bindLayoutEditor() {
+  for (const panel of getDashboardPanels()) {
+    panel.addEventListener("dragstart", handlePanelDragStart);
+    panel.addEventListener("dragover", handlePanelDragOver);
+    panel.addEventListener("drop", handlePanelDrop);
+    panel.addEventListener("dragend", handlePanelDragEnd);
+  }
+
+  elements.dashboard.addEventListener("dragover", (event) => {
+    if (!state.layoutEdit || !state.draggedModuleId) {
+      return;
+    }
+
+    event.preventDefault();
+  });
+  elements.dashboard.addEventListener("drop", handleDashboardDrop);
+  elements.layoutToggleButton.addEventListener("click", () => {
+    setLayoutEdit(!state.layoutEdit);
+  });
+  elements.layoutResetButton.addEventListener("click", () => {
+    applyLayoutOrder(DEFAULT_LAYOUT_ORDER);
+    persistLayoutOrder();
+    setLayoutEdit(false);
+  });
+}
 
 function setModuleStatus(element, online, label) {
   if (!element) {
@@ -232,7 +472,7 @@ function renderSensorPayload(payload, reading, options = {}) {
   elements.vocValue.textContent = formatValue(reading.voc, " ppb", 0);
   elements.comfortValue.textContent = `${reading.comfortIndex} / 100`;
   elements.payloadPreview.textContent = JSON.stringify(payload, null, 2);
-  elements.pollState.textContent = isFallback ? "Fallback sample displayed" : "Air monitor panel live";
+  elements.pollState.textContent = "Dashboard active";
 }
 
 async function loadSensorData() {
@@ -499,6 +739,9 @@ function startPolling() {
   state.sensorTimer = window.setInterval(loadSensorData, state.sensorRefreshMs);
   state.weatherTimer = window.setInterval(requestWeather, state.weatherRefreshMs);
 }
+
+bindLayoutEditor();
+loadSavedLayout();
 
 elements.wifiSpeedtestButton.addEventListener("click", () => {
   runWifiSpeedtest();

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Situation Monitor</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=20260328" />
   </head>
   <body>
     <div class="shell">
@@ -14,16 +14,25 @@
           <h1>Situation Monitor</h1>
         </div>
         <div class="masthead-meta">
-          <span id="clock">--:--:--</span>
-          <span id="poll-state">Awaiting first sample</span>
+          <div class="masthead-status">
+            <span id="clock">--:--:--</span>
+            <span id="poll-state">Dashboard active</span>
+          </div>
+          <div class="layout-controls">
+            <button class="panel-button panel-button--compact panel-button--ghost" id="layout-toggle-button" type="button" aria-pressed="false">Rearrange modules</button>
+            <button class="panel-button panel-button--compact panel-button--ghost" id="layout-reset-button" type="button">Reset layout</button>
+          </div>
         </div>
       </header>
 
-      <main class="dashboard">
-        <section class="panel gauge-panel live-panel reveal">
+      <main class="dashboard" id="dashboard" data-layout-edit="false">
+        <section class="panel gauge-panel live-panel reveal" data-module-id="module-01">
           <div class="panel-head">
             <p class="panel-label">Module 01</p>
-            <span class="status-light status-light--offline" id="module-01-status" aria-label="Module 01 offline"></span>
+            <div class="panel-head__meta">
+              <span class="module-handle" aria-hidden="true">Drag</span>
+              <span class="status-light status-light--offline" id="module-01-status" aria-label="Module 01 offline"></span>
+            </div>
           </div>
           <div class="live-panel__intro">
             <div>
@@ -61,10 +70,13 @@
           <pre class="payload-preview" id="payload-preview">{}</pre>
         </section>
 
-        <section class="panel bars-panel weather-panel reveal">
+        <section class="panel bars-panel weather-panel reveal" data-module-id="module-02">
           <div class="panel-head">
             <p class="panel-label">Module 02</p>
-            <span class="status-light status-light--offline" id="module-02-status" aria-label="Module 02 offline"></span>
+            <div class="panel-head__meta">
+              <span class="module-handle" aria-hidden="true">Drag</span>
+              <span class="status-light status-light--offline" id="module-02-status" aria-label="Module 02 offline"></span>
+            </div>
           </div>
           <div class="weather-panel__intro">
             <div>
@@ -79,10 +91,13 @@
           <div class="weather-panel__footer subtle" id="weather-status">Waiting for location access</div>
         </section>
 
-        <section class="panel timing-panel wifi-panel reveal">
+        <section class="panel timing-panel wifi-panel reveal" data-module-id="module-03">
           <div class="panel-head">
             <p class="panel-label">Module 03</p>
-            <span class="status-light status-light--offline" id="module-03-status" aria-label="Module 03 offline"></span>
+            <div class="panel-head__meta">
+              <span class="module-handle" aria-hidden="true">Drag</span>
+              <span class="status-light status-light--offline" id="module-03-status" aria-label="Module 03 offline"></span>
+            </div>
           </div>
           <div class="wifi-panel__intro">
             <div>
@@ -123,10 +138,13 @@
           </div>
         </section>
 
-        <section class="panel metric-panel placeholder-panel reveal">
+        <section class="panel metric-panel placeholder-panel reveal" data-module-id="module-04">
           <div class="panel-head">
             <p class="panel-label">Module 04</p>
-            <span class="status-light status-light--offline" aria-label="Module 04 offline"></span>
+            <div class="panel-head__meta">
+              <span class="module-handle" aria-hidden="true">Drag</span>
+              <span class="status-light status-light--offline" aria-label="Module 04 offline"></span>
+            </div>
           </div>
           <div class="placeholder-block">
             <span class="placeholder-title">Reserved</span>
@@ -134,10 +152,13 @@
           </div>
         </section>
 
-        <section class="panel detail-panel placeholder-panel reveal">
+        <section class="panel detail-panel placeholder-panel reveal" data-module-id="module-05">
           <div class="panel-head">
             <p class="panel-label">Module 05</p>
-            <span class="status-light status-light--offline" aria-label="Module 05 offline"></span>
+            <div class="panel-head__meta">
+              <span class="module-handle" aria-hidden="true">Drag</span>
+              <span class="status-light status-light--offline" aria-label="Module 05 offline"></span>
+            </div>
           </div>
           <div class="placeholder-block">
             <span class="placeholder-title">Reserved</span>
@@ -145,10 +166,13 @@
           </div>
         </section>
 
-        <section class="panel action-panel placeholder-panel reveal">
+        <section class="panel action-panel placeholder-panel reveal" data-module-id="module-06">
           <div class="panel-head">
             <p class="panel-label">Module 06</p>
-            <span class="status-light status-light--offline" aria-label="Module 06 offline"></span>
+            <div class="panel-head__meta">
+              <span class="module-handle" aria-hidden="true">Drag</span>
+              <span class="status-light status-light--offline" aria-label="Module 06 offline"></span>
+            </div>
           </div>
           <div class="placeholder-block">
             <span class="placeholder-title">Reserved</span>
@@ -166,6 +190,6 @@
         weatherRefreshMs: 1800000
       };
     </script>
-    <script src="./app.js"></script>
+    <script src="./app.js?v=20260328"></script>
   </body>
 </html>

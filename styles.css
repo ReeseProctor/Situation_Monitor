@@ -95,25 +95,47 @@ body::before {
   font-size: 0.86rem;
 }
 
+.masthead-status {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.layout-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+
+.layout-controls .panel-button {
+  width: auto;
+  padding: 8px 12px;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
 .dashboard {
   display: grid;
-  grid-template-columns: 1.1fr 1.9fr 1.4fr;
-  grid-template-areas:
-    "gauge bars timing"
-    "metric detail actions";
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: 640px;
+  gap: 1px;
+  padding: 1px;
   border: 1px solid var(--line);
-  background: linear-gradient(180deg, rgba(10, 10, 10, 0.78), rgba(4, 4, 4, 0.94));
+  background: var(--line);
   box-shadow: 0 28px 60px var(--shadow);
 }
 
 .panel {
-  min-height: 292px;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
   padding: 22px 22px 20px;
-  border-right: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
   background: var(--panel);
   position: relative;
   overflow: hidden;
+  transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
 }
 
 .panel::after {
@@ -125,68 +147,51 @@ body::before {
   pointer-events: none;
 }
 
-.panel:nth-child(3),
-.panel:nth-child(6) {
-  border-right: 0;
-}
-
-.panel:nth-child(n + 4) {
-  border-bottom: 0;
-}
-
 .gauge-panel {
-  grid-area: gauge;
   display: grid;
   grid-template-rows: auto 1fr auto;
 }
 
 .gauge-panel.live-panel {
-  grid-template-rows: auto auto 1fr;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   gap: 18px;
 }
 
 .bars-panel {
-  grid-area: bars;
   display: grid;
   grid-template-rows: auto auto auto 1fr;
   gap: 18px;
 }
 
 .weather-panel {
-  grid-area: bars;
   display: grid;
-  grid-template-rows: auto auto 1fr;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: 20px;
 }
 
 .timing-panel {
-  grid-area: timing;
   display: grid;
   grid-template-rows: auto auto 1fr;
 }
 
 .wifi-panel {
-  grid-area: timing;
   display: grid;
-  grid-template-rows: auto auto auto auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: 16px;
 }
 
 .metric-panel {
-  grid-area: metric;
   display: grid;
   grid-template-rows: auto 1fr auto auto;
 }
 
 .detail-panel {
-  grid-area: detail;
   display: grid;
   grid-template-rows: auto auto 1fr;
   gap: 18px;
 }
 
 .action-panel {
-  grid-area: actions;
   display: grid;
   grid-template-rows: auto 1fr auto auto;
   gap: 12px;
@@ -236,6 +241,7 @@ body::before {
 .live-panel__intro > div {
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 
 .live-panel__headline {
@@ -255,6 +261,7 @@ body::before {
 .weather-panel__intro > div {
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 
 .weather-panel__headline {
@@ -283,6 +290,7 @@ body::before {
 .wifi-panel__intro > div {
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 
 .wifi-panel__headline {
@@ -348,6 +356,9 @@ body::before {
   display: grid;
   gap: 8px;
   align-content: start;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 6px;
 }
 
 .weather-panel__footer {
@@ -360,10 +371,12 @@ body::before {
 .forecast-row,
 .forecast-empty {
   display: grid;
-  grid-template-columns: 62px 1fr auto auto;
-  grid-template-areas: "day desc temps rain";
-  gap: 12px;
-  align-items: center;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  grid-template-areas:
+    "day desc temps"
+    "day rain rain";
+  gap: 6px 12px;
+  align-items: start;
   padding: 10px 0;
   border-top: 1px solid var(--line);
   text-transform: uppercase;
@@ -385,6 +398,7 @@ body::before {
   color: var(--muted);
   font-size: 0.78rem;
   line-height: 1.4;
+  min-width: 0;
 }
 
 .forecast-temps,
@@ -400,6 +414,7 @@ body::before {
 
 .forecast-rain {
   grid-area: rain;
+  justify-self: end;
 }
 
 .weather-alert {
@@ -428,6 +443,53 @@ body::before {
   justify-content: space-between;
   gap: 12px;
   align-self: start;
+}
+
+.panel-head__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.module-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  color: var(--dim);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.dashboard[data-layout-edit="true"] .module-handle {
+  opacity: 1;
+}
+
+.dashboard[data-layout-edit="true"] .panel {
+  cursor: grab;
+}
+
+.dashboard[data-layout-edit="true"] .panel:hover {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.dashboard[data-layout-edit="true"] .panel--dragging {
+  opacity: 0.42;
+  cursor: grabbing;
+}
+
+.dashboard[data-layout-edit="true"] .panel--drop-before {
+  box-shadow: inset 0 3px 0 var(--accent);
+}
+
+.dashboard[data-layout-edit="true"] .panel--drop-after {
+  box-shadow: inset 0 -3px 0 var(--accent);
 }
 
 .status-light {
@@ -633,6 +695,7 @@ body::before {
   padding: 14px;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.02);
+  min-height: 0;
   overflow: auto;
 }
 
@@ -725,26 +788,8 @@ body::before {
   }
 
   .dashboard {
-    grid-template-columns: 1fr 1fr;
-    grid-template-areas:
-      "gauge bars"
-      "timing timing"
-      "metric detail"
-      "actions actions";
-  }
-
-  .panel:nth-child(2),
-  .panel:nth-child(4) {
-    border-right: 0;
-  }
-
-  .panel:nth-child(3),
-  .panel:nth-child(5) {
-    border-right: 1px solid var(--line);
-  }
-
-  .action-panel {
-    border-right: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: 600px;
   }
 }
 
@@ -758,20 +803,22 @@ body::before {
     justify-items: start;
   }
 
+  .masthead-status {
+    justify-content: flex-start;
+  }
+
+  .layout-controls {
+    justify-content: flex-start;
+  }
+
   .dashboard {
     grid-template-columns: 1fr;
-    grid-template-areas:
-      "gauge"
-      "bars"
-      "timing"
-      "metric"
-      "detail"
-      "actions";
+    grid-auto-rows: auto;
   }
 
   .panel {
     min-height: auto;
-    border-right: 0;
+    height: auto;
     padding: 18px;
   }
 
