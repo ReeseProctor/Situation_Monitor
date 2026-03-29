@@ -9,6 +9,7 @@ const state = {
   marketEndpoint: config.marketEndpoint || "/api/markets",
   wifiSpeedtestEndpoint: config.wifiSpeedtestEndpoint || "/api/wifi-speedtest",
   layoutStorageKey: "situation-monitor-layout-v1",
+  lifeSettingsStorageKey: "situation-monitor-life-settings-v1",
   lastSensorAt: null,
   layoutEdit: false,
   draggedModuleId: null,
@@ -31,6 +32,7 @@ const elements = {
   module02Status: document.querySelector("#module-02-status"),
   module03Status: document.querySelector("#module-03-status"),
   module04Status: document.querySelector("#module-04-status"),
+  module05Status: document.querySelector("#module-05-status"),
   sensorStatus: document.querySelector("#sensor-status"),
   sensorSource: document.querySelector("#sensor-source"),
   fieldCount: document.querySelector("#field-count"),
@@ -50,6 +52,22 @@ const elements = {
   marketUpdated: document.querySelector("#market-updated"),
   marketList: document.querySelector("#market-list"),
   marketSource: document.querySelector("#market-source"),
+  lifeStatus: document.querySelector("#life-status"),
+  lifeNote: document.querySelector("#life-note"),
+  lifeSummary: document.querySelector("#life-summary"),
+  yearProgressRing: document.querySelector("#year-progress-ring"),
+  yearProgressValue: document.querySelector("#year-progress-value"),
+  yearProgressNote: document.querySelector("#year-progress-note"),
+  lifeProgressRing: document.querySelector("#life-progress-ring"),
+  lifeProgressValue: document.querySelector("#life-progress-value"),
+  lifeProgressNote: document.querySelector("#life-progress-note"),
+  lifeFooter: document.querySelector("#life-footer"),
+  lifeSettingsButton: document.querySelector("#life-settings-button"),
+  lifeSettingsDialog: document.querySelector("#life-settings-dialog"),
+  lifeSettingsForm: document.querySelector("#life-settings-form"),
+  lifeBirthdateInput: document.querySelector("#life-birthdate-input"),
+  lifeExpectancyInput: document.querySelector("#life-expectancy-input"),
+  lifeSettingsCancel: document.querySelector("#life-settings-cancel"),
   wifiStatus: document.querySelector("#wifi-status"),
   wifiNote: document.querySelector("#wifi-note"),
   wifiSpeed: document.querySelector("#wifi-speed"),
@@ -61,6 +79,8 @@ const elements = {
   speedtestPing: document.querySelector("#speedtest-ping"),
   speedtestRpm: document.querySelector("#speedtest-rpm")
 };
+
+state.lifeSettings = loadLifeSettings();
 
 function getDashboardPanels() {
   return Array.from(elements.dashboard.querySelectorAll(".panel[data-module-id]"));
@@ -171,6 +191,41 @@ function setLayoutEdit(nextState) {
   }
 
   updateLayoutControls();
+}
+
+function loadLifeSettings() {
+  const defaults = {
+    birthDate: "",
+    lifeExpectancyYears: 85
+  };
+
+  try {
+    const raw = window.localStorage.getItem(state.lifeSettingsStorageKey);
+    if (!raw) {
+      return defaults;
+    }
+
+    const parsed = JSON.parse(raw);
+    const lifeExpectancyYears = Number.parseInt(parsed?.lifeExpectancyYears, 10);
+    return {
+      birthDate: typeof parsed?.birthDate === "string" ? parsed.birthDate : "",
+      lifeExpectancyYears: Number.isFinite(lifeExpectancyYears) && lifeExpectancyYears > 0
+        ? lifeExpectancyYears
+        : defaults.lifeExpectancyYears
+    };
+  } catch (error) {
+    return defaults;
+  }
+}
+
+function persistLifeSettings(settings) {
+  state.lifeSettings = settings;
+
+  try {
+    window.localStorage.setItem(state.lifeSettingsStorageKey, JSON.stringify(settings));
+  } catch (error) {
+    return;
+  }
 }
 
 function loadSavedLayout() {
@@ -353,6 +408,14 @@ function formatClock(date) {
   }).format(date);
 }
 
+function formatCompactDate(date) {
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric"
+  }).format(date);
+}
+
 function formatAge(ms) {
   if (!ms && ms !== 0) {
     return "--";
@@ -419,6 +482,41 @@ function clamp(number, min, max) {
   return Math.min(max, Math.max(min, number));
 }
 
+function isValidDate(date) {
+  return date instanceof Date && !Number.isNaN(date.getTime());
+}
+
+function parseStoredDate(value) {
+  if (typeof value !== "string" || value.trim() === "") {
+    return null;
+  }
+
+  const parsed = new Date(`${value}T00:00:00`);
+  return isValidDate(parsed) ? parsed : null;
+}
+
+function addYears(date, years) {
+  const next = new Date(date.getTime());
+  next.setFullYear(next.getFullYear() + years);
+  return next;
+}
+
+function applyLifeRing(ring, valueElement, noteElement, progress, valueText, noteText, muted = false) {
+  if (ring) {
+    ring.style.setProperty("--progress", String(clamp(progress ?? 0, 0, 1)));
+    ring.classList.toggle("life-ring--muted", muted);
+  }
+
+  if (valueElement) {
+    valueElement.textContent = valueText;
+    valueElement.classList.toggle("life-ring__value--small", valueText.length > 5);
+  }
+
+  if (noteElement) {
+    noteElement.textContent = noteText;
+  }
+}
+
 function computeComfortIndex(reading) {
   let score = 100;
 
@@ -480,6 +578,104 @@ function updateClock() {
   elements.lastSampleAge.textContent = state.lastSensorAt
     ? `${formatAge(Date.now() - state.lastSensorAt)} ago`
     : "No data";
+  renderLifeProgress();
+}
+
+function renderLifeProgress() {
+  const now = new Date();
+  const yearStart = new Date(now.getFullYear(), 0, 1);
+  const yearEnd = new Date(now.getFullYear() + 1, 0, 1);
+  const yearProgress = clamp((now - yearStart) / (yearEnd - yearStart), 0, 1);
+  const dayOfYear = Math.floor((now - yearStart) / 86400000) + 1;
+  const totalDays = Math.round((yearEnd - yearStart) / 86400000);
+
+  setModuleStatus(elements.module05Status, true, "Module 05 online");
+  elements.lifeStatus.textContent = "Life progress tracker";
+  elements.lifeNote.textContent = "Year progress and lifetime pacing";
+
+  applyLifeRing(
+    elements.yearProgressRing,
+    elements.yearProgressValue,
+    elements.yearProgressNote,
+    yearProgress,
+    `${Math.round(yearProgress * 100)}%`,
+    `Day ${dayOfYear} of ${totalDays}`
+  );
+
+  const settings = state.lifeSettings;
+  const expectancy = Number.isFinite(settings.lifeExpectancyYears) ? settings.lifeExpectancyYears : 85;
+  const birthDate = parseStoredDate(settings.birthDate);
+
+  if (!birthDate) {
+    applyLifeRing(
+      elements.lifeProgressRing,
+      elements.lifeProgressValue,
+      elements.lifeProgressNote,
+      0,
+      "Set DOB",
+      `Assuming ${expectancy} year lifespan`,
+      true
+    );
+    elements.lifeSummary.textContent = `Assuming ${expectancy} year lifespan`;
+    elements.lifeFooter.textContent = "Open settings to add a birth date";
+    return;
+  }
+
+  const endDate = addYears(birthDate, expectancy);
+  const totalLifeMs = Math.max(endDate - birthDate, 1);
+  const elapsedLifeMs = clamp(now - birthDate, 0, totalLifeMs);
+  const lifeProgress = clamp(elapsedLifeMs / totalLifeMs, 0, 1);
+  const ageYears = elapsedLifeMs / (365.2425 * 24 * 60 * 60 * 1000);
+
+  applyLifeRing(
+    elements.lifeProgressRing,
+    elements.lifeProgressValue,
+    elements.lifeProgressNote,
+    lifeProgress,
+    `${Math.round(lifeProgress * 100)}%`,
+    `Age ${ageYears.toFixed(1)} of ${expectancy}`
+  );
+  elements.lifeSummary.textContent = `${formatCompactDate(birthDate)} to ${formatCompactDate(endDate)}`;
+  elements.lifeFooter.textContent = `Life expectancy set to ${expectancy} years`;
+}
+
+function openLifeSettingsDialog() {
+  const settings = state.lifeSettings;
+  elements.lifeBirthdateInput.value = settings.birthDate || "";
+  elements.lifeExpectancyInput.value = String(settings.lifeExpectancyYears || 85);
+
+  if (typeof elements.lifeSettingsDialog.showModal === "function") {
+    elements.lifeSettingsDialog.showModal();
+    return;
+  }
+
+  elements.lifeSettingsDialog.setAttribute("open", "open");
+}
+
+function closeLifeSettingsDialog() {
+  if (typeof elements.lifeSettingsDialog.close === "function") {
+    elements.lifeSettingsDialog.close();
+    return;
+  }
+
+  elements.lifeSettingsDialog.removeAttribute("open");
+}
+
+function handleLifeSettingsSubmit(event) {
+  event.preventDefault();
+
+  const expectancy = clamp(
+    Number.parseInt(elements.lifeExpectancyInput.value, 10) || 85,
+    1,
+    130
+  );
+
+  persistLifeSettings({
+    birthDate: elements.lifeBirthdateInput.value || "",
+    lifeExpectancyYears: expectancy
+  });
+  closeLifeSettingsDialog();
+  renderLifeProgress();
 }
 
 function renderSensorPayload(payload, reading, options = {}) {
@@ -897,6 +1093,13 @@ loadSavedLayout();
 elements.wifiSpeedtestButton.addEventListener("click", () => {
   runWifiSpeedtest();
 });
+elements.lifeSettingsButton.addEventListener("click", () => {
+  openLifeSettingsDialog();
+});
+elements.lifeSettingsCancel.addEventListener("click", () => {
+  closeLifeSettingsDialog();
+});
+elements.lifeSettingsForm.addEventListener("submit", handleLifeSettingsSubmit);
 
 updateClock();
 window.setInterval(updateClock, 1000);

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Situation Monitor</title>
-    <link rel="stylesheet" href="./styles.css?v=20260328-market" />
+    <link rel="stylesheet" href="./styles.css?v=20260328-life" />
   </head>
   <body>
     <div class="shell">
@@ -159,17 +159,44 @@
           <div class="market-panel__footer subtle" id="market-source">Awaiting market data</div>
         </section>
 
-        <section class="panel detail-panel placeholder-panel reveal" data-module-id="module-05">
+        <section class="panel detail-panel life-panel reveal" data-module-id="module-05">
           <div class="panel-head">
             <p class="panel-label">Module 05</p>
             <div class="panel-head__meta">
               <span class="module-handle" aria-hidden="true">Drag</span>
-              <span class="status-light status-light--offline" aria-label="Module 05 offline"></span>
+              <span class="status-light status-light--offline" id="module-05-status" aria-label="Module 05 offline"></span>
             </div>
           </div>
-          <div class="placeholder-block">
-            <span class="placeholder-title">Reserved</span>
-            <span class="placeholder-copy">Future room telemetry or automation state</span>
+          <div class="life-panel__intro">
+            <div>
+              <span class="life-panel__headline" id="life-status">Life progress tracker</span>
+              <span class="subtle" id="life-note">Year progress and lifetime pacing</span>
+            </div>
+            <div class="subtle" id="life-summary">Assuming 85 year lifespan</div>
+          </div>
+          <div class="life-trackers">
+            <article class="life-card">
+              <div class="life-ring" id="year-progress-ring" style="--progress: 0;">
+                <div class="life-ring__center">
+                  <span class="life-ring__value" id="year-progress-value">--%</span>
+                  <span class="life-ring__label">Current year</span>
+                </div>
+              </div>
+              <span class="subtle life-card__note" id="year-progress-note">Waiting for clock</span>
+            </article>
+            <article class="life-card">
+              <div class="life-ring" id="life-progress-ring" style="--progress: 0;">
+                <div class="life-ring__center">
+                  <span class="life-ring__value" id="life-progress-value">Set DOB</span>
+                  <span class="life-ring__label">Life progress</span>
+                </div>
+              </div>
+              <span class="subtle life-card__note" id="life-progress-note">Open settings to add a birth date</span>
+            </article>
+          </div>
+          <div class="life-panel__footer">
+            <span class="subtle" id="life-footer">Life expectancy defaults to 85 years</span>
+            <button class="panel-button panel-button--compact panel-button--ghost" id="life-settings-button" type="button">Edit life settings</button>
           </div>
         </section>
 
@@ -189,6 +216,27 @@
       </main>
     </div>
 
+    <dialog class="life-dialog" id="life-settings-dialog">
+      <form class="life-dialog__form" id="life-settings-form" method="dialog">
+        <div class="life-dialog__head">
+          <span class="life-dialog__title">Life progress settings</span>
+          <span class="subtle">Birth date is used to calculate life progress. Life expectancy defaults to 85 years.</span>
+        </div>
+        <label class="life-dialog__field">
+          <span class="detail-term">Birth date</span>
+          <input class="life-dialog__input" id="life-birthdate-input" name="birthDate" type="date" />
+        </label>
+        <label class="life-dialog__field">
+          <span class="detail-term">Life expectancy</span>
+          <input class="life-dialog__input" id="life-expectancy-input" name="lifeExpectancyYears" type="number" min="1" max="130" step="1" value="85" />
+        </label>
+        <div class="life-dialog__actions">
+          <button class="panel-button panel-button--compact panel-button--ghost" id="life-settings-cancel" type="button">Cancel</button>
+          <button class="panel-button panel-button--compact" type="submit">Save settings</button>
+        </div>
+      </form>
+    </dialog>
+
     <script>
       window.SITUATION_MONITOR_CONFIG = {
         refreshMs: 5000,
@@ -199,6 +247,6 @@
         marketRefreshMs: 300000
       };
     </script>
-    <script src="./app.js?v=20260328-market"></script>
+    <script src="./app.js?v=20260328-life"></script>
   </body>
 </html>
