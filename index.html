@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Situation Monitor</title>
-    <link rel="stylesheet" href="./styles.css?v=20260328" />
+    <link rel="stylesheet" href="./styles.css?v=20260328-market" />
   </head>
   <body>
     <div class="shell">
@@ -138,18 +138,25 @@
           </div>
         </section>
 
-        <section class="panel metric-panel placeholder-panel reveal" data-module-id="module-04">
+        <section class="panel metric-panel market-panel reveal" data-module-id="module-04">
           <div class="panel-head">
             <p class="panel-label">Module 04</p>
             <div class="panel-head__meta">
               <span class="module-handle" aria-hidden="true">Drag</span>
-              <span class="status-light status-light--offline" aria-label="Module 04 offline"></span>
+              <span class="status-light status-light--offline" id="module-04-status" aria-label="Module 04 offline"></span>
             </div>
           </div>
-          <div class="placeholder-block">
-            <span class="placeholder-title">Reserved</span>
-            <span class="placeholder-copy">Historical trendline or alerts</span>
+          <div class="market-panel__intro">
+            <div>
+              <span class="market-panel__headline" id="market-status">Preparing market feed</span>
+              <span class="subtle" id="market-note">SPY / QQQ / SOXL / CL=F / Bitcoin</span>
+            </div>
+            <div class="subtle" id="market-updated">Waiting for first pull</div>
           </div>
+          <div class="market-list" id="market-list">
+            <div class="market-empty">Market module standing by</div>
+          </div>
+          <div class="market-panel__footer subtle" id="market-source">Awaiting market data</div>
         </section>
 
         <section class="panel detail-panel placeholder-panel reveal" data-module-id="module-05">
@@ -187,9 +194,11 @@
         refreshMs: 5000,
         endpoint: "/api/air",
         weatherEndpoint: "/api/weather",
-        weatherRefreshMs: 1800000
+        weatherRefreshMs: 1800000,
+        marketEndpoint: "/api/markets",
+        marketRefreshMs: 300000
       };
     </script>
-    <script src="./app.js?v=20260328"></script>
+    <script src="./app.js?v=20260328-market"></script>
   </body>
 </html>

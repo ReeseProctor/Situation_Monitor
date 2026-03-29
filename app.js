@@ -3,8 +3,10 @@ const config = window.SITUATION_MONITOR_CONFIG || {};
 const state = {
   sensorRefreshMs: config.refreshMs || 5000,
   weatherRefreshMs: config.weatherRefreshMs || 1800000,
+  marketRefreshMs: config.marketRefreshMs || 300000,
   sensorEndpoint: config.endpoint || "/api/air",
   weatherEndpoint: config.weatherEndpoint || "/api/weather",
+  marketEndpoint: config.marketEndpoint || "/api/markets",
   wifiSpeedtestEndpoint: config.wifiSpeedtestEndpoint || "/api/wifi-speedtest",
   layoutStorageKey: "situation-monitor-layout-v1",
   lastSensorAt: null,
@@ -12,6 +14,7 @@ const state = {
   draggedModuleId: null,
   speedtestRunning: false,
   sensorTimer: null,
+  marketTimer: null,
   weatherTimer: null
 };
 
@@ -27,6 +30,7 @@ const elements = {
   module01Status: document.querySelector("#module-01-status"),
   module02Status: document.querySelector("#module-02-status"),
   module03Status: document.querySelector("#module-03-status"),
+  module04Status: document.querySelector("#module-04-status"),
   sensorStatus: document.querySelector("#sensor-status"),
   sensorSource: document.querySelector("#sensor-source"),
   fieldCount: document.querySelector("#field-count"),
@@ -41,6 +45,11 @@ const elements = {
   weatherStatus: document.querySelector("#weather-status"),
   weatherSummary: document.querySelector("#weather-summary"),
   forecastList: document.querySelector("#forecast-list"),
+  marketStatus: document.querySelector("#market-status"),
+  marketNote: document.querySelector("#market-note"),
+  marketUpdated: document.querySelector("#market-updated"),
+  marketList: document.querySelector("#market-list"),
+  marketSource: document.querySelector("#market-source"),
   wifiStatus: document.querySelector("#wifi-status"),
   wifiNote: document.querySelector("#wifi-note"),
   wifiSpeed: document.querySelector("#wifi-speed"),
@@ -313,6 +322,29 @@ function formatValue(value, suffix = "", digits = 1) {
   return `${value.toFixed(digits)}${suffix}`;
 }
 
+function formatCurrency(value, currency = "USD") {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "--";
+  }
+
+  const digits = Math.abs(value) >= 1000 ? 0 : 2;
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency,
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits
+  }).format(value);
+}
+
+function formatPercentChange(value) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "--";
+  }
+
+  const prefix = value > 0 ? "+" : "";
+  return `${prefix}${value.toFixed(2)}%`;
+}
+
 function formatClock(date) {
   return new Intl.DateTimeFormat(undefined, {
     hour: "2-digit",
@@ -469,6 +501,10 @@ function renderSensorPayload(payload, reading, options = {}) {
     "detail-value--alert",
     typeof reading.co2 === "number" && reading.co2 >= 800
   );
+  elements.co2Value.classList.toggle(
+    "detail-value--positive",
+    typeof reading.co2 === "number" && reading.co2 < 800
+  );
   elements.vocValue.textContent = formatValue(reading.voc, " ppb", 0);
   elements.comfortValue.textContent = `${reading.comfortIndex} / 100`;
   elements.payloadPreview.textContent = JSON.stringify(payload, null, 2);
@@ -545,6 +581,114 @@ function weatherAlertClass(...temperatures) {
   return temperatures.some((temperature) => typeof temperature === "number" && temperature > 90)
     ? " weather-alert"
     : "";
+}
+
+function marketChangeClass(value) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "";
+  }
+
+  if (value > 0) {
+    return " market-row__change--positive market-sparkline--positive";
+  }
+
+  if (value < 0) {
+    return " market-row__change--negative market-sparkline--negative";
+  }
+
+  return "";
+}
+
+function buildMarketSparkline(points) {
+  const values = Array.isArray(points)
+    ? points.filter((value) => typeof value === "number" && Number.isFinite(value))
+    : [];
+
+  if (!values.length) {
+    return '<div class="market-sparkline market-sparkline--empty"></div>';
+  }
+
+  const visible = values.slice(-24);
+  const low = Math.min(...visible);
+  const high = Math.max(...visible);
+  const range = Math.max(high - low, 1);
+  const bars = visible.map((value) => {
+    const height = 18 + (((value - low) / range) * 82);
+    return `<span style="height:${height.toFixed(1)}%"></span>`;
+  }).join("");
+
+  return `<div class="market-sparkline">${bars}</div>`;
+}
+
+function renderMarketPayload(payload) {
+  const symbols = Array.isArray(payload?.symbols) ? payload.symbols : [];
+  if (!symbols.length) {
+    renderMarketError("No market symbols returned");
+    return;
+  }
+
+  setModuleStatus(elements.module04Status, true, "Module 04 online");
+  elements.marketStatus.textContent = "Daily market watch";
+  elements.marketNote.textContent = "SPY / QQQ / SOXL / CL=F / Bitcoin";
+  elements.marketUpdated.textContent = payload.sampled_at
+    ? `Updated / ${formatClock(new Date(payload.sampled_at * 1000))}`
+    : `Updated / ${formatClock(new Date())}`;
+  elements.marketSource.textContent = payload.partial
+    ? `${payload.source || "Market feed"} / partial update`
+    : `${payload.source || "Market feed"} / 1D intraday`;
+
+  const rows = symbols.map((item) => {
+    const changeClass = marketChangeClass(item.percent_change);
+    const label = item.label || item.symbol || "--";
+    const symbol = item.symbol || "--";
+    const price = formatCurrency(item.price, item.currency || "USD");
+    const change = formatPercentChange(item.percent_change);
+    const sparkline = buildMarketSparkline(item.points);
+
+    return `
+      <article class="market-row">
+        <div class="market-row__top">
+          <div class="market-row__identity">
+            <span class="market-row__symbol">${label}</span>
+            <span class="market-row__price">${symbol} / ${price}</span>
+          </div>
+          <span class="market-row__change${changeClass}">${change}</span>
+        </div>
+        <div class="market-row__chart${changeClass}">
+          ${sparkline}
+        </div>
+      </article>
+    `;
+  });
+
+  elements.marketList.innerHTML = rows.join("");
+}
+
+function renderMarketError(message) {
+  setModuleStatus(elements.module04Status, false, "Module 04 offline");
+  elements.marketStatus.textContent = "Market feed unavailable";
+  elements.marketNote.textContent = message;
+  elements.marketUpdated.textContent = `Failed / ${formatClock(new Date())}`;
+  elements.marketSource.textContent = "Market data unavailable";
+  elements.marketList.innerHTML = `<div class="market-empty">${message}</div>`;
+}
+
+async function loadMarkets() {
+  try {
+    const response = await fetch(state.marketEndpoint, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const payload = await response.json();
+    if (!payload.ok) {
+      throw new Error(payload.error || "Market request failed");
+    }
+
+    renderMarketPayload(payload);
+  } catch (error) {
+    renderMarketError("Market service unavailable");
+  }
 }
 
 function renderWeatherForecast(daily) {
@@ -646,6 +790,7 @@ function renderSpeedtestError(message) {
   elements.speedtestDownload.textContent = "--";
   elements.speedtestUpload.textContent = "--";
   elements.speedtestPing.textContent = "--";
+  elements.speedtestPing.classList.remove("detail-value--positive");
   elements.speedtestRpm.textContent = "--";
   elements.wifiLastCheck.textContent = `Failed ${formatClock(new Date())}`;
 }
@@ -663,6 +808,10 @@ function renderSpeedtestPayload(payload) {
   elements.speedtestDownload.textContent = formatValue(payload.download_mbps, " Mbps", 1);
   elements.speedtestUpload.textContent = formatValue(payload.upload_mbps, " Mbps", 1);
   elements.speedtestPing.textContent = formatValue(payload.latency_ms, " ms", 0);
+  elements.speedtestPing.classList.toggle(
+    "detail-value--positive",
+    typeof payload.latency_ms === "number" && payload.latency_ms < 50
+  );
   elements.speedtestRpm.textContent = payload.responsiveness_rpm != null
     ? `${Math.round(payload.responsiveness_rpm)} rpm`
     : "--";
@@ -735,8 +884,10 @@ function requestWeather() {
 
 function startPolling() {
   clearInterval(state.sensorTimer);
+  clearInterval(state.marketTimer);
   clearInterval(state.weatherTimer);
   state.sensorTimer = window.setInterval(loadSensorData, state.sensorRefreshMs);
+  state.marketTimer = window.setInterval(loadMarkets, state.marketRefreshMs);
   state.weatherTimer = window.setInterval(requestWeather, state.weatherRefreshMs);
 }
 
@@ -750,6 +901,7 @@ elements.wifiSpeedtestButton.addEventListener("click", () => {
 updateClock();
 window.setInterval(updateClock, 1000);
 loadSensorData();
+loadMarkets();
 requestWeather();
 runWifiSpeedtest();
 startPolling();

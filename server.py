@@ -9,7 +9,7 @@ from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import parse_qs, urlencode, urlparse
+from urllib.parse import parse_qs, quote, urlencode, urlparse
 from urllib.request import Request, urlopen
 
 
@@ -19,10 +19,21 @@ WEATHER_URL = os.environ.get(
     "SITUATION_WEATHER_URL",
     "https://api.open-meteo.com/v1/forecast",
 )
+MARKET_URL = os.environ.get(
+    "SITUATION_MARKET_URL",
+    "https://query1.finance.yahoo.com/v8/finance/chart",
+)
 HOST = os.environ.get("SITUATION_MONITOR_HOST", "127.0.0.1")
 PORT = int(os.environ.get("SITUATION_MONITOR_PORT", "8000"))
 DEFAULT_SSL_CONTEXT = ssl.create_default_context()
 INSECURE_SSL_CONTEXT = ssl._create_unverified_context()
+MARKET_SYMBOLS = [
+    {"symbol": "SPY", "label": "SPY"},
+    {"symbol": "QQQ", "label": "QQQ"},
+    {"symbol": "SOXL", "label": "SOXL"},
+    {"symbol": "CL=F", "label": "CL=F"},
+    {"symbol": "BTC-USD", "label": "Bitcoin"},
+]
 WIFI_SAMPLE = {
     "interface": None,
     "timestamp": None,
@@ -47,6 +58,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.handle_weather_proxy()
             return
 
+        if self.path == "/api/markets":
+            self.handle_markets_proxy()
+            return
+
         if self.path == "/api/wifi":
             self.handle_wifi_proxy()
             return
@@ -62,6 +77,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                     "ok": True,
                     "sensor_url": SENSOR_URL,
                     "weather_url": WEATHER_URL,
+                    "markets_endpoint": "/api/markets",
                     "wifi_endpoint": "/api/wifi",
                     "wifi_speedtest_endpoint": "/api/wifi-speedtest",
                     "root": str(ROOT),
@@ -116,6 +132,35 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
     def handle_wifi_proxy(self) -> None:
         self.send_json(HTTPStatus.OK, self.collect_wifi_metrics())
+
+    def handle_markets_proxy(self) -> None:
+        quotes = []
+        errors = []
+
+        for item in MARKET_SYMBOLS:
+            try:
+                quotes.append(self.fetch_market_quote(item))
+            except (HTTPError, URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+                errors.append(f"{item['symbol']}: {exc}")
+
+        if not quotes:
+            self.send_json(
+                HTTPStatus.BAD_GATEWAY,
+                {"ok": False, "error": "Market data unavailable", "details": errors},
+            )
+            return
+
+        self.send_json(
+            HTTPStatus.OK,
+            {
+                "ok": True,
+                "source": "Yahoo Finance",
+                "sampled_at": int(time.time()),
+                "symbols": quotes,
+                "partial": bool(errors),
+                "errors": errors[:2],
+            },
+        )
 
     def handle_wifi_speedtest(self) -> None:
         if SPEEDTEST_STATE["running"]:
@@ -226,6 +271,64 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             "latency_ms": base_rtt,
             "responsiveness_rpm": responsiveness,
             "tested_at": payload.get("end_date"),
+        }
+
+    def fetch_market_quote(self, item: dict) -> dict:
+        symbol = item["symbol"]
+        query = urlencode(
+            {
+                "interval": "5m",
+                "range": "1d",
+                "includePrePost": "false",
+                "events": "div,splits",
+            }
+        )
+        request = Request(
+            f"{MARKET_URL}/{quote(symbol, safe='=^-')}" f"?{query}",
+            headers={
+                "Accept": "application/json",
+                "User-Agent": "SituationMonitor/1.0",
+            },
+        )
+
+        with self.urlopen_with_ssl_retry(request, timeout=5) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+
+        results = payload.get("chart", {}).get("result") or []
+        if not results:
+            error_payload = payload.get("chart", {}).get("error") or {}
+            description = error_payload.get("description") or "No market chart data returned"
+            raise ValueError(description)
+
+        result = results[0]
+        meta = result.get("meta", {})
+        quotes = result.get("indicators", {}).get("quote", [{}])
+        closes = quotes[0].get("close", []) if quotes else []
+        series = [float(value) for value in closes if isinstance(value, (int, float))]
+
+        current_price = meta.get("regularMarketPrice")
+        if not isinstance(current_price, (int, float)) and series:
+            current_price = series[-1]
+
+        previous_close = meta.get("chartPreviousClose")
+        if not isinstance(previous_close, (int, float)):
+            previous_close = meta.get("previousClose")
+        if not isinstance(previous_close, (int, float)) and series:
+            previous_close = series[0]
+
+        percent_change = None
+        if isinstance(current_price, (int, float)) and isinstance(previous_close, (int, float)) and previous_close:
+            percent_change = ((current_price - previous_close) / previous_close) * 100
+
+        return {
+            "symbol": symbol,
+            "label": item["label"],
+            "currency": meta.get("currency") or "USD",
+            "price": current_price,
+            "previous_close": previous_close,
+            "percent_change": percent_change,
+            "points": series[-24:],
+            "market_state": meta.get("marketState"),
         }
 
     def detect_active_interface(self) -> str | None:

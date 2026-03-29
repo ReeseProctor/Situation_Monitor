@@ -278,6 +278,128 @@ body::before {
   line-height: 1.4;
 }
 
+.market-panel {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 16px;
+}
+
+.market-panel__intro {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: end;
+}
+
+.market-panel__intro > div {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.market-panel__headline {
+  font-size: 1.18rem;
+  text-transform: uppercase;
+}
+
+.market-list {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.market-row,
+.market-empty {
+  display: grid;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.market-row:first-child,
+.market-empty {
+  border-top: 1px solid var(--line);
+}
+
+.market-row__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: end;
+}
+
+.market-row__identity {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.market-row__symbol {
+  color: var(--text);
+  font-size: 0.92rem;
+  text-transform: uppercase;
+}
+
+.market-row__price {
+  color: var(--muted);
+  font-size: 0.76rem;
+  text-transform: uppercase;
+}
+
+.market-row__change {
+  color: var(--text);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.market-row__change--positive {
+  color: #54ff87;
+}
+
+.market-row__change--negative {
+  color: var(--alert-red);
+}
+
+.market-row__chart {
+  min-width: 0;
+}
+
+.market-sparkline {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  align-items: end;
+  gap: 4px;
+  min-height: 36px;
+}
+
+.market-sparkline span {
+  display: block;
+  min-height: 3px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.market-empty {
+  color: var(--muted);
+  min-height: 240px;
+  align-content: center;
+  text-transform: uppercase;
+}
+
+.market-panel__footer {
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
 .wifi-panel__intro {
   position: relative;
   z-index: 1;
@@ -690,6 +812,10 @@ body::before {
   color: var(--alert-red);
 }
 
+.detail-value--positive {
+  color: #54ff87;
+}
+
 .payload-preview {
   margin: 0;
   padding: 14px;
@@ -836,6 +962,11 @@ body::before {
     align-items: flex-start;
   }
 
+  .market-panel__intro {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .wifi-panel__intro {
     flex-direction: column;
     align-items: flex-start;
@@ -852,6 +983,11 @@ body::before {
       ". temps"
       ". rain";
     align-items: start;
+  }
+
+  .market-row__top {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .speedtest-metrics {
