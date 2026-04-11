@@ -4,10 +4,13 @@ const state = {
   sensorRefreshMs: config.refreshMs || 5000,
   weatherRefreshMs: config.weatherRefreshMs || 1800000,
   marketRefreshMs: config.marketRefreshMs || 300000,
+  cameraRefreshMs: config.cameraRefreshMs || 15000,
   sensorEndpoint: config.endpoint || "/api/air",
   weatherEndpoint: config.weatherEndpoint || "/api/weather",
   marketEndpoint: config.marketEndpoint || "/api/markets",
   wifiSpeedtestEndpoint: config.wifiSpeedtestEndpoint || "/api/wifi-speedtest",
+  cameraHealthEndpoint: config.cameraHealthEndpoint || "/api/camera-health",
+  cameraUrl: config.cameraUrl || "http://camera.local/",
   layoutStorageKey: "situation-monitor-layout-v1",
   lifeSettingsStorageKey: "situation-monitor-life-settings-v1",
   lastSensorAt: null,
@@ -16,6 +19,7 @@ const state = {
   speedtestRunning: false,
   sensorTimer: null,
   marketTimer: null,
+  cameraTimer: null,
   weatherTimer: null
 };
 
@@ -33,6 +37,7 @@ const elements = {
   module03Status: document.querySelector("#module-03-status"),
   module04Status: document.querySelector("#module-04-status"),
   module05Status: document.querySelector("#module-05-status"),
+  module06Status: document.querySelector("#module-06-status"),
   sensorStatus: document.querySelector("#sensor-status"),
   sensorSource: document.querySelector("#sensor-source"),
   fieldCount: document.querySelector("#field-count"),
@@ -68,6 +73,14 @@ const elements = {
   lifeBirthdateInput: document.querySelector("#life-birthdate-input"),
   lifeExpectancyInput: document.querySelector("#life-expectancy-input"),
   lifeSettingsCancel: document.querySelector("#life-settings-cancel"),
+  cameraStatus: document.querySelector("#camera-status"),
+  cameraSource: document.querySelector("#camera-source"),
+  cameraNote: document.querySelector("#camera-note"),
+  cameraFrame: document.querySelector("#camera-frame"),
+  cameraFrameWrap: document.querySelector("#camera-frame-wrap"),
+  cameraOverlay: document.querySelector("#camera-overlay"),
+  cameraFooter: document.querySelector("#camera-footer"),
+  cameraRefreshButton: document.querySelector("#camera-refresh-button"),
   wifiStatus: document.querySelector("#wifi-status"),
   wifiNote: document.querySelector("#wifi-note"),
   wifiSpeed: document.querySelector("#wifi-speed"),
@@ -225,6 +238,69 @@ function persistLifeSettings(settings) {
     window.localStorage.setItem(state.lifeSettingsStorageKey, JSON.stringify(settings));
   } catch (error) {
     return;
+  }
+}
+
+function refreshCameraFrame() {
+  const separator = state.cameraUrl.includes("?") ? "&" : "?";
+  const nextUrl = `${state.cameraUrl}${separator}ts=${Date.now()}`;
+  elements.cameraOverlay.textContent = "Refreshing camera";
+  elements.cameraFrameWrap.classList.remove("camera-frame-wrap--ready");
+  setModuleSampling(elements.module06Status, "Module 06 camera loading");
+  elements.cameraStatus.textContent = "Loading camera feed";
+  elements.cameraNote.textContent = "Attempting reconnect";
+  elements.cameraFrame.src = nextUrl;
+  loadCameraHealth();
+}
+
+function renderCameraFrameLoaded() {
+  elements.cameraFrameWrap.classList.add("camera-frame-wrap--ready");
+  if (elements.cameraOverlay.textContent === "Connecting to camera") {
+    elements.cameraOverlay.textContent = "";
+  }
+}
+
+function renderCameraOffline(message = "Unable to reach the camera") {
+  setModuleStatus(elements.module06Status, false, "Module 06 offline");
+  elements.cameraStatus.textContent = "Camera unavailable";
+  elements.cameraNote.textContent = message;
+  elements.cameraFooter.textContent = "Open the stream directly or try refreshing the camera.";
+  elements.cameraOverlay.textContent = "Camera feed unavailable";
+  elements.cameraFrameWrap.classList.remove("camera-frame-wrap--ready");
+}
+
+function renderCameraHealth(payload) {
+  if (!payload?.online) {
+    renderCameraOffline("Unable to reach the camera");
+    return;
+  }
+
+  setModuleStatus(elements.module06Status, true, "Module 06 online");
+  elements.cameraStatus.textContent = "Camera feed active";
+  elements.cameraSource.textContent = "XIAO ESP32S3 Sense / camera.local";
+  elements.cameraNote.textContent = "Embedded live view";
+  elements.cameraFooter.textContent = payload.checked_at
+    ? `Camera reachable / ${formatClock(new Date(payload.checked_at * 1000))}`
+    : "Camera reachable";
+
+  if (elements.cameraFrameWrap.classList.contains("camera-frame-wrap--ready")) {
+    elements.cameraOverlay.textContent = "";
+  } else {
+    elements.cameraOverlay.textContent = "Loading camera frame";
+  }
+}
+
+async function loadCameraHealth() {
+  try {
+    const response = await fetch(state.cameraHealthEndpoint, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const payload = await response.json();
+    renderCameraHealth(payload);
+  } catch (error) {
+    renderCameraOffline("Camera host is offline");
   }
 }
 
@@ -685,7 +761,7 @@ function renderSensorPayload(payload, reading, options = {}) {
   elements.sensorStatus.textContent = isFallback ? "Fallback sample active" : "ESP32 link active";
   elements.sensorSource.textContent = isFallback
     ? "Simulated data stream"
-    : "Live payload proxied from 192.168.4.23";
+    : "Live payload proxied from airmonitor.local";
   elements.fieldCount.textContent = String(reading.fieldCount);
   elements.temperatureValue.textContent = formatValue(
     reading.temperatureDisplay,
@@ -1081,9 +1157,11 @@ function requestWeather() {
 function startPolling() {
   clearInterval(state.sensorTimer);
   clearInterval(state.marketTimer);
+  clearInterval(state.cameraTimer);
   clearInterval(state.weatherTimer);
   state.sensorTimer = window.setInterval(loadSensorData, state.sensorRefreshMs);
   state.marketTimer = window.setInterval(loadMarkets, state.marketRefreshMs);
+  state.cameraTimer = window.setInterval(loadCameraHealth, state.cameraRefreshMs);
   state.weatherTimer = window.setInterval(requestWeather, state.weatherRefreshMs);
 }
 
@@ -1100,6 +1178,15 @@ elements.lifeSettingsCancel.addEventListener("click", () => {
   closeLifeSettingsDialog();
 });
 elements.lifeSettingsForm.addEventListener("submit", handleLifeSettingsSubmit);
+elements.cameraRefreshButton.addEventListener("click", () => {
+  refreshCameraFrame();
+});
+elements.cameraFrame.addEventListener("load", () => {
+  renderCameraFrameLoaded();
+});
+elements.cameraFrame.addEventListener("error", () => {
+  renderCameraOffline("Unable to load the camera page");
+});
 
 updateClock();
 window.setInterval(updateClock, 1000);
@@ -1107,4 +1194,6 @@ loadSensorData();
 loadMarkets();
 requestWeather();
 runWifiSpeedtest();
+loadCameraHealth();
+refreshCameraFrame();
 startPolling();

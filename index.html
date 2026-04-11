@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Situation Monitor</title>
-    <link rel="stylesheet" href="./styles.css?v=20260328-life" />
+    <link rel="stylesheet" href="./styles.css?v=20260407-camera" />
   </head>
   <body>
     <div class="shell">
@@ -37,7 +37,7 @@
           <div class="live-panel__intro">
             <div>
               <span class="live-panel__headline" id="sensor-status">Awaiting first sample</span>
-              <span class="subtle" id="sensor-source">ESP32 feed / 192.168.4.23</span>
+              <span class="subtle" id="sensor-source">ESP32 feed / airmonitor.local</span>
             </div>
             <div class="subtle" id="last-sample-age">No data</div>
           </div>
@@ -200,17 +200,38 @@
           </div>
         </section>
 
-        <section class="panel action-panel placeholder-panel reveal" data-module-id="module-06">
+        <section class="panel action-panel camera-panel reveal" data-module-id="module-06">
           <div class="panel-head">
             <p class="panel-label">Module 06</p>
             <div class="panel-head__meta">
               <span class="module-handle" aria-hidden="true">Drag</span>
-              <span class="status-light status-light--offline" aria-label="Module 06 offline"></span>
+              <span class="status-light status-light--offline" id="module-06-status" aria-label="Module 06 offline"></span>
             </div>
           </div>
-          <div class="placeholder-block">
-            <span class="placeholder-title">Reserved</span>
-            <span class="placeholder-copy">Controls, schedules, or ingest actions</span>
+          <div class="camera-panel__intro">
+            <div>
+              <span class="camera-panel__headline" id="camera-status">Loading camera feed</span>
+              <span class="subtle" id="camera-source">XIAO ESP32S3 Sense / camera.local</span>
+            </div>
+            <div class="subtle" id="camera-note">Embedded live view</div>
+          </div>
+          <div class="camera-frame-wrap" id="camera-frame-wrap">
+            <iframe
+              class="camera-frame"
+              id="camera-frame"
+              title="XIAO ESP32S3 Sense camera stream"
+              src="http://camera.local/"
+              loading="lazy"
+              referrerpolicy="no-referrer"
+            ></iframe>
+            <div class="camera-overlay subtle" id="camera-overlay">Connecting to camera</div>
+          </div>
+          <div class="camera-panel__footer">
+            <span class="subtle" id="camera-footer">If the feed stalls, refresh the camera view.</span>
+            <div class="camera-panel__actions">
+              <button class="panel-button panel-button--compact panel-button--ghost" id="camera-refresh-button" type="button">Refresh camera</button>
+              <a class="panel-button panel-button--compact panel-button--ghost camera-link-button" href="http://camera.local/" target="_blank" rel="noreferrer">Open stream</a>
+            </div>
           </div>
         </section>
       </main>
@@ -244,9 +265,12 @@
         weatherEndpoint: "/api/weather",
         weatherRefreshMs: 1800000,
         marketEndpoint: "/api/markets",
-        marketRefreshMs: 300000
+        marketRefreshMs: 300000,
+        cameraHealthEndpoint: "/api/camera-health",
+        cameraRefreshMs: 15000,
+        cameraUrl: "http://camera.local/"
       };
     </script>
-    <script src="./app.js?v=20260328-life"></script>
+    <script src="./app.js?v=20260407-camera"></script>
   </body>
 </html>

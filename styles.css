@@ -433,6 +433,7 @@ body::before {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   min-height: 0;
+  align-items: start;
 }
 
 .life-card {
@@ -442,6 +443,7 @@ body::before {
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.015);
   align-content: start;
+  align-self: start;
 }
 
 .life-ring {
@@ -563,6 +565,91 @@ body::before {
   justify-content: flex-end;
   gap: 10px;
   margin-top: 8px;
+}
+
+.camera-panel {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 16px;
+}
+
+.camera-panel__intro {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: end;
+}
+
+.camera-panel__intro > div {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.camera-panel__headline {
+  font-size: 1.18rem;
+  text-transform: uppercase;
+}
+
+.camera-frame-wrap {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.04), transparent 42%),
+    rgba(255, 255, 255, 0.015);
+  overflow: hidden;
+}
+
+.camera-frame-wrap--ready .camera-overlay {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.camera-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #050505;
+}
+
+.camera-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(5, 5, 5, 0.72);
+  letter-spacing: 0.12em;
+  text-align: center;
+  padding: 18px;
+  transition: opacity 180ms ease;
+}
+
+.camera-panel__footer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.camera-panel__actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.camera-link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 
 .wifi-panel__intro {
@@ -1137,6 +1224,11 @@ body::before {
     align-items: flex-start;
   }
 
+  .camera-panel__intro {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .wifi-panel__intro {
     flex-direction: column;
     align-items: flex-start;
@@ -1182,6 +1274,17 @@ body::before {
   .life-panel__footer {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .camera-panel__footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .camera-panel__actions {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
   }
 
   .life-dialog__actions {

@@ -14,7 +14,7 @@ from urllib.request import Request, urlopen
 
 
 ROOT = Path(__file__).resolve().parent
-SENSOR_URL = os.environ.get("SITUATION_SENSOR_URL", "http://192.168.4.23/data")
+SENSOR_URL = os.environ.get("SITUATION_SENSOR_URL", "http://airmonitor.local/data")
 WEATHER_URL = os.environ.get(
     "SITUATION_WEATHER_URL",
     "https://api.open-meteo.com/v1/forecast",
@@ -23,6 +23,7 @@ MARKET_URL = os.environ.get(
     "SITUATION_MARKET_URL",
     "https://query1.finance.yahoo.com/v8/finance/chart",
 )
+CAMERA_URL = os.environ.get("SITUATION_CAMERA_URL", "http://camera.local/")
 HOST = os.environ.get("SITUATION_MONITOR_HOST", "127.0.0.1")
 PORT = int(os.environ.get("SITUATION_MONITOR_PORT", "8000"))
 DEFAULT_SSL_CONTEXT = ssl.create_default_context()
@@ -62,6 +63,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.handle_markets_proxy()
             return
 
+        if self.path == "/api/camera-health":
+            self.handle_camera_health()
+            return
+
         if self.path == "/api/wifi":
             self.handle_wifi_proxy()
             return
@@ -78,6 +83,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                     "sensor_url": SENSOR_URL,
                     "weather_url": WEATHER_URL,
                     "markets_endpoint": "/api/markets",
+                    "camera_url": CAMERA_URL,
+                    "camera_health_endpoint": "/api/camera-health",
                     "wifi_endpoint": "/api/wifi",
                     "wifi_speedtest_endpoint": "/api/wifi-speedtest",
                     "root": str(ROOT),
@@ -132,6 +139,48 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
     def handle_wifi_proxy(self) -> None:
         self.send_json(HTTPStatus.OK, self.collect_wifi_metrics())
+
+    def handle_camera_health(self) -> None:
+        request = Request(
+            CAMERA_URL,
+            headers={
+                "Accept": "text/html,image/*;q=0.9,*/*;q=0.8",
+                "User-Agent": "SituationMonitor/1.0",
+            },
+        )
+
+        try:
+            with urlopen(request, timeout=3) as response:
+                status = response.status
+        except HTTPError as exc:
+            self.send_json(
+                HTTPStatus.BAD_GATEWAY,
+                {"ok": False, "online": False, "error": f"Camera returned HTTP {exc.code}"},
+            )
+            return
+        except URLError as exc:
+            self.send_json(
+                HTTPStatus.BAD_GATEWAY,
+                {"ok": False, "online": False, "error": f"Camera unavailable: {exc.reason}"},
+            )
+            return
+        except TimeoutError:
+            self.send_json(
+                HTTPStatus.GATEWAY_TIMEOUT,
+                {"ok": False, "online": False, "error": "Camera request timed out"},
+            )
+            return
+
+        self.send_json(
+            HTTPStatus.OK,
+            {
+                "ok": True,
+                "online": True,
+                "status": status,
+                "camera_url": CAMERA_URL,
+                "checked_at": int(time.time()),
+            },
+        )
 
     def handle_markets_proxy(self) -> None:
         quotes = []
