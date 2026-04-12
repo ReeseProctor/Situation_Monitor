@@ -652,6 +652,67 @@ body::before {
   text-decoration: none;
 }
 
+.photo-panel {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 16px;
+}
+
+.photo-panel__intro {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: end;
+}
+
+.photo-panel__intro > div {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.photo-panel__headline {
+  font-size: 1.18rem;
+  text-transform: uppercase;
+}
+
+.photo-frame-wrap {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+}
+
+.photo-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.86) contrast(1.04);
+}
+
+.photo-panel__footer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.photo-link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
 .wifi-panel__intro {
   position: relative;
   z-index: 1;
@@ -1229,6 +1290,11 @@ body::before {
     align-items: flex-start;
   }
 
+  .photo-panel__intro {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .wifi-panel__intro {
     flex-direction: column;
     align-items: flex-start;
@@ -1277,6 +1343,11 @@ body::before {
   }
 
   .camera-panel__footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .photo-panel__footer {
     align-items: flex-start;
     flex-direction: column;
   }

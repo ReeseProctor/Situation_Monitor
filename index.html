@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Situation Monitor</title>
-    <link rel="stylesheet" href="./styles.css?v=20260407-camera" />
+    <link rel="stylesheet" href="./styles.css?v=20260411-module07" />
   </head>
   <body>
     <div class="shell">
@@ -234,6 +234,70 @@
             </div>
           </div>
         </section>
+
+        <section class="panel metric-panel photo-panel reveal" data-module-id="module-07">
+          <div class="panel-head">
+            <p class="panel-label">Module 07</p>
+            <div class="panel-head__meta">
+              <span class="module-handle" aria-hidden="true">Drag</span>
+              <span class="status-light status-light--offline" id="module-07-status" aria-label="Module 07 offline"></span>
+            </div>
+          </div>
+          <div class="photo-panel__intro">
+            <div>
+              <span class="photo-panel__headline" id="funny-photo-status">Loading funny photo</span>
+              <span class="subtle" id="funny-photo-note">Internet image module</span>
+            </div>
+            <div class="subtle" id="funny-photo-source">Wikimedia Commons</div>
+          </div>
+          <div class="photo-frame-wrap" id="funny-photo-wrap">
+            <img
+              class="photo-frame"
+              id="funny-photo-image"
+              src="https://commons.wikimedia.org/wiki/Special:FilePath/Dog%20with%20a%20pipe%20in%20its%20mouth%20%281294106%29.jpg"
+              alt="Funny dog with a pipe in its mouth"
+              loading="lazy"
+              referrerpolicy="no-referrer"
+            />
+          </div>
+          <div class="photo-panel__footer">
+            <span class="subtle" id="funny-photo-caption">Funny dog with a pipe in its mouth</span>
+            <a
+              class="panel-button panel-button--compact panel-button--ghost photo-link-button"
+              href="https://commons.wikimedia.org/wiki/File:Dog_with_a_pipe_in_its_mouth_(1294106).jpg"
+              target="_blank"
+              rel="noreferrer"
+            >Open source</a>
+          </div>
+        </section>
+
+        <section class="panel metric-panel placeholder-panel reveal" data-module-id="module-08">
+          <div class="panel-head">
+            <p class="panel-label">Module 08</p>
+            <div class="panel-head__meta">
+              <span class="module-handle" aria-hidden="true">Drag</span>
+              <span class="status-light status-light--offline" aria-label="Module 08 offline"></span>
+            </div>
+          </div>
+          <div class="placeholder-block">
+            <span class="placeholder-title">Reserved</span>
+            <span class="placeholder-copy">Additional module slot reserved for future use</span>
+          </div>
+        </section>
+
+        <section class="panel metric-panel placeholder-panel reveal" data-module-id="module-09">
+          <div class="panel-head">
+            <p class="panel-label">Module 09</p>
+            <div class="panel-head__meta">
+              <span class="module-handle" aria-hidden="true">Drag</span>
+              <span class="status-light status-light--offline" aria-label="Module 09 offline"></span>
+            </div>
+          </div>
+          <div class="placeholder-block">
+            <span class="placeholder-title">Reserved</span>
+            <span class="placeholder-copy">Additional module slot reserved for future use</span>
+          </div>
+        </section>
       </main>
     </div>
 
@@ -271,6 +335,6 @@
         cameraUrl: "http://camera.local/"
       };
     </script>
-    <script src="./app.js?v=20260407-camera"></script>
+    <script src="./app.js?v=20260411-module07"></script>
   </body>
 </html>

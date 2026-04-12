@@ -38,6 +38,7 @@ const elements = {
   module04Status: document.querySelector("#module-04-status"),
   module05Status: document.querySelector("#module-05-status"),
   module06Status: document.querySelector("#module-06-status"),
+  module07Status: document.querySelector("#module-07-status"),
   sensorStatus: document.querySelector("#sensor-status"),
   sensorSource: document.querySelector("#sensor-source"),
   fieldCount: document.querySelector("#field-count"),
@@ -81,6 +82,12 @@ const elements = {
   cameraOverlay: document.querySelector("#camera-overlay"),
   cameraFooter: document.querySelector("#camera-footer"),
   cameraRefreshButton: document.querySelector("#camera-refresh-button"),
+  funnyPhotoStatus: document.querySelector("#funny-photo-status"),
+  funnyPhotoNote: document.querySelector("#funny-photo-note"),
+  funnyPhotoSource: document.querySelector("#funny-photo-source"),
+  funnyPhotoWrap: document.querySelector("#funny-photo-wrap"),
+  funnyPhotoImage: document.querySelector("#funny-photo-image"),
+  funnyPhotoCaption: document.querySelector("#funny-photo-caption"),
   wifiStatus: document.querySelector("#wifi-status"),
   wifiNote: document.querySelector("#wifi-note"),
   wifiSpeed: document.querySelector("#wifi-speed"),
@@ -288,6 +295,24 @@ function renderCameraHealth(payload) {
   } else {
     elements.cameraOverlay.textContent = "Loading camera frame";
   }
+}
+
+function renderFunnyPhotoReady() {
+  setModuleStatus(elements.module07Status, true, "Module 07 online");
+  elements.funnyPhotoStatus.textContent = "Funny photo loaded";
+  elements.funnyPhotoNote.textContent = "Internet image module";
+  elements.funnyPhotoSource.textContent = "Wikimedia Commons";
+  elements.funnyPhotoCaption.textContent = "Funny dog with a pipe in its mouth";
+  elements.funnyPhotoWrap.classList.add("photo-frame-wrap--ready");
+}
+
+function renderFunnyPhotoError() {
+  setModuleStatus(elements.module07Status, false, "Module 07 offline");
+  elements.funnyPhotoStatus.textContent = "Funny photo unavailable";
+  elements.funnyPhotoNote.textContent = "Unable to load external image";
+  elements.funnyPhotoSource.textContent = "Wikimedia Commons";
+  elements.funnyPhotoCaption.textContent = "Image unavailable";
+  elements.funnyPhotoWrap.classList.remove("photo-frame-wrap--ready");
 }
 
 async function loadCameraHealth() {
@@ -1186,6 +1211,12 @@ elements.cameraFrame.addEventListener("load", () => {
 });
 elements.cameraFrame.addEventListener("error", () => {
   renderCameraOffline("Unable to load the camera page");
+});
+elements.funnyPhotoImage.addEventListener("load", () => {
+  renderFunnyPhotoReady();
+});
+elements.funnyPhotoImage.addEventListener("error", () => {
+  renderFunnyPhotoError();
 });
 
 updateClock();
