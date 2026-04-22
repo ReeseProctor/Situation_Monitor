@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import json
 import os
+import platform
+import shutil
 import ssl
 import subprocess
 import time
+from datetime import datetime
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -26,6 +29,16 @@ MARKET_URL = os.environ.get(
 CAMERA_URL = os.environ.get("SITUATION_CAMERA_URL", "http://camera.local/")
 HOST = os.environ.get("SITUATION_MONITOR_HOST", "127.0.0.1")
 PORT = int(os.environ.get("SITUATION_MONITOR_PORT", "8000"))
+SPEEDTEST_DOWNLOAD_URL = os.environ.get(
+    "SITUATION_SPEEDTEST_DOWNLOAD_URL",
+    "https://speed.cloudflare.com/__down",
+)
+SPEEDTEST_UPLOAD_URL = os.environ.get(
+    "SITUATION_SPEEDTEST_UPLOAD_URL",
+    "https://speed.cloudflare.com/__up",
+)
+SPEEDTEST_DOWNLOAD_BYTES = int(os.environ.get("SITUATION_SPEEDTEST_DOWNLOAD_BYTES", "10000000"))
+SPEEDTEST_UPLOAD_BYTES = int(os.environ.get("SITUATION_SPEEDTEST_UPLOAD_BYTES", "5000000"))
 DEFAULT_SSL_CONTEXT = ssl.create_default_context()
 INSECURE_SSL_CONTEXT = ssl._create_unverified_context()
 MARKET_SYMBOLS = [
@@ -221,7 +234,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
         SPEEDTEST_STATE["running"] = True
         try:
-            payload = self.run_network_quality_test()
+            payload = self.run_wifi_speedtest()
             self.send_json(HTTPStatus.OK, payload)
         finally:
             SPEEDTEST_STATE["running"] = False
@@ -287,12 +300,17 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         if interface:
             command.extend(["-I", interface])
 
-        result = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        try:
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=60,
+            )
+        except subprocess.TimeoutExpired:
+            return {"ok": False, "error": "networkQuality timed out"}
+
         if result.returncode != 0:
             return {
                 "ok": False,
@@ -314,6 +332,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
         return {
             "ok": True,
+            "source": "networkQuality",
             "interface": payload.get("interface_name") or interface,
             "download_mbps": (download_bps / 1_000_000) if isinstance(download_bps, (int, float)) else None,
             "upload_mbps": (upload_bps / 1_000_000) if isinstance(upload_bps, (int, float)) else None,
@@ -321,6 +340,223 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             "responsiveness_rpm": responsiveness,
             "tested_at": payload.get("end_date"),
         }
+
+    def run_wifi_speedtest(self) -> dict:
+        attempts = []
+
+        if platform.system() == "Darwin" and shutil.which("networkQuality"):
+            attempts.append(("networkQuality", self.run_network_quality_test))
+
+        if shutil.which("speedtest"):
+            attempts.append(("Ookla speedtest CLI", self.run_ookla_speedtest))
+
+        if shutil.which("speedtest-cli"):
+            attempts.append(("speedtest-cli", self.run_speedtest_cli))
+
+        attempts.append(("HTTP fallback", self.run_http_speedtest))
+
+        errors = []
+        for source, runner in attempts:
+            payload = runner()
+            if payload.get("ok"):
+                return payload
+            errors.append(f"{source}: {payload.get('error', 'failed')}")
+
+        return {
+            "ok": False,
+            "error": "No speed test backend completed successfully",
+            "details": errors,
+        }
+
+    def run_ookla_speedtest(self) -> dict:
+        result = self.run_command(
+            ["speedtest", "--format=json", "--accept-license", "--accept-gdpr"],
+            timeout=120,
+        )
+        if result["error"]:
+            return {"ok": False, "error": result["error"]}
+
+        try:
+            payload = json.loads(result["stdout"])
+        except json.JSONDecodeError:
+            return {"ok": False, "error": "Unable to parse speedtest output"}
+
+        download = payload.get("download") or {}
+        upload = payload.get("upload") or {}
+        ping = payload.get("ping") or {}
+        interface = payload.get("interface") or {}
+
+        download_bandwidth = download.get("bandwidth")
+        upload_bandwidth = upload.get("bandwidth")
+
+        return {
+            "ok": True,
+            "source": "Ookla speedtest CLI",
+            "interface": interface.get("name") or interface.get("externalIp") or self.detect_active_interface(),
+            "download_mbps": self.bytes_per_second_to_mbps(download_bandwidth),
+            "upload_mbps": self.bytes_per_second_to_mbps(upload_bandwidth),
+            "latency_ms": ping.get("latency"),
+            "responsiveness_rpm": None,
+            "tested_at": payload.get("timestamp") or self.current_timestamp(),
+        }
+
+    def run_speedtest_cli(self) -> dict:
+        result = self.run_command(["speedtest-cli", "--json"], timeout=120)
+        if result["error"]:
+            return {"ok": False, "error": result["error"]}
+
+        try:
+            payload = json.loads(result["stdout"])
+        except json.JSONDecodeError:
+            return {"ok": False, "error": "Unable to parse speedtest-cli output"}
+
+        return {
+            "ok": True,
+            "source": "speedtest-cli",
+            "interface": self.detect_active_interface(),
+            "download_mbps": self.bits_per_second_to_mbps(payload.get("download")),
+            "upload_mbps": self.bits_per_second_to_mbps(payload.get("upload")),
+            "latency_ms": payload.get("ping"),
+            "responsiveness_rpm": None,
+            "tested_at": payload.get("timestamp") or self.current_timestamp(),
+        }
+
+    def run_http_speedtest(self) -> dict:
+        download_result = self.measure_download_speed()
+        if not download_result["ok"]:
+            return {"ok": False, "error": download_result["error"]}
+
+        upload_result = self.measure_upload_speed()
+        latency_ms = self.measure_latency()
+
+        return {
+            "ok": True,
+            "source": "HTTP fallback",
+            "interface": self.detect_active_interface(),
+            "download_mbps": download_result["mbps"],
+            "upload_mbps": upload_result["mbps"] if upload_result["ok"] else None,
+            "latency_ms": latency_ms,
+            "responsiveness_rpm": None,
+            "tested_at": self.current_timestamp(),
+            "partial": not upload_result["ok"],
+            "warning": None if upload_result["ok"] else upload_result["error"],
+        }
+
+    def measure_download_speed(self) -> dict:
+        url = f"{SPEEDTEST_DOWNLOAD_URL}?{urlencode({'bytes': SPEEDTEST_DOWNLOAD_BYTES})}"
+        request = Request(
+            url,
+            headers={
+                "Accept": "application/octet-stream",
+                "Accept-Encoding": "identity",
+                "Cache-Control": "no-store",
+                "User-Agent": "SituationMonitor/1.0",
+            },
+        )
+
+        try:
+            start = time.perf_counter()
+            total_bytes = 0
+            with self.urlopen_with_ssl_retry(request, timeout=30) as response:
+                while True:
+                    chunk = response.read(1024 * 128)
+                    if not chunk:
+                        break
+                    total_bytes += len(chunk)
+            elapsed = time.perf_counter() - start
+        except (HTTPError, URLError, TimeoutError) as exc:
+            return {"ok": False, "error": f"Download test failed: {exc}"}
+
+        if elapsed <= 0 or total_bytes <= 0:
+            return {"ok": False, "error": "Download test returned no data"}
+
+        return {"ok": True, "mbps": (total_bytes * 8) / elapsed / 1_000_000}
+
+    def measure_upload_speed(self) -> dict:
+        data = os.urandom(SPEEDTEST_UPLOAD_BYTES)
+        request = Request(
+            SPEEDTEST_UPLOAD_URL,
+            data=data,
+            method="POST",
+            headers={
+                "Content-Type": "application/octet-stream",
+                "Content-Length": str(len(data)),
+                "Cache-Control": "no-store",
+                "User-Agent": "SituationMonitor/1.0",
+            },
+        )
+
+        try:
+            start = time.perf_counter()
+            with self.urlopen_with_ssl_retry(request, timeout=30) as response:
+                response.read()
+            elapsed = time.perf_counter() - start
+        except (HTTPError, URLError, TimeoutError) as exc:
+            return {"ok": False, "error": f"Upload test failed: {exc}"}
+
+        if elapsed <= 0:
+            return {"ok": False, "error": "Upload test completed too quickly to measure"}
+
+        return {"ok": True, "mbps": (len(data) * 8) / elapsed / 1_000_000}
+
+    def measure_latency(self) -> float | None:
+        timings = []
+        url = f"{SPEEDTEST_DOWNLOAD_URL}?{urlencode({'bytes': 1})}"
+
+        for _ in range(3):
+            request = Request(
+                url,
+                headers={
+                    "Accept": "application/octet-stream",
+                    "Cache-Control": "no-store",
+                    "User-Agent": "SituationMonitor/1.0",
+                },
+            )
+
+            try:
+                start = time.perf_counter()
+                with self.urlopen_with_ssl_retry(request, timeout=10) as response:
+                    response.read()
+                timings.append((time.perf_counter() - start) * 1000)
+            except (HTTPError, URLError, TimeoutError):
+                continue
+
+        if not timings:
+            return None
+
+        return sum(timings) / len(timings)
+
+    def run_command(self, command: list[str], timeout: int) -> dict:
+        try:
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=timeout,
+            )
+        except (FileNotFoundError, PermissionError) as exc:
+            return {"stdout": "", "error": str(exc)}
+        except subprocess.TimeoutExpired:
+            return {"stdout": "", "error": f"{command[0]} timed out"}
+
+        if result.returncode != 0:
+            return {"stdout": result.stdout, "error": result.stderr.strip() or f"{command[0]} failed"}
+
+        return {"stdout": result.stdout, "error": None}
+
+    def current_timestamp(self) -> str:
+        return datetime.now().isoformat(timespec="seconds")
+
+    def bytes_per_second_to_mbps(self, value) -> float | None:
+        if not isinstance(value, (int, float)):
+            return None
+        return (value * 8) / 1_000_000
+
+    def bits_per_second_to_mbps(self, value) -> float | None:
+        if not isinstance(value, (int, float)):
+            return None
+        return value / 1_000_000
 
     def fetch_market_quote(self, item: dict) -> dict:
         symbol = item["symbol"]
@@ -381,6 +617,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         }
 
     def detect_active_interface(self) -> str | None:
+        linux_interface = self.detect_linux_default_interface()
+        if linux_interface:
+            return linux_interface
+
         result = subprocess.run(
             ["ifconfig"],
             capture_output=True,
@@ -417,7 +657,38 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
         return chosen
 
+    def detect_linux_default_interface(self) -> str | None:
+        if not shutil.which("ip"):
+            return None
+
+        result = subprocess.run(
+            ["ip", "route", "get", "1.1.1.1"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            return None
+
+        parts = result.stdout.split()
+        if "dev" not in parts:
+            return None
+
+        index = parts.index("dev")
+        if index + 1 >= len(parts):
+            return None
+
+        interface = parts[index + 1]
+        if interface.startswith(("lo", "docker", "br-", "veth")):
+            return None
+
+        return interface
+
     def read_ifconfig_details(self, interface: str) -> dict:
+        linux_details = self.read_linux_interface_details(interface)
+        if linux_details:
+            return linux_details
+
         result = subprocess.run(
             ["ifconfig", interface],
             capture_output=True,
@@ -439,7 +710,35 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
         return {"ip_address": ip_address, "status": status}
 
+    def read_linux_interface_details(self, interface: str) -> dict | None:
+        if not shutil.which("ip"):
+            return None
+
+        result = subprocess.run(
+            ["ip", "-4", "addr", "show", "dev", interface],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            return None
+
+        ip_address = None
+        status = "inactive"
+        for line in result.stdout.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("inet "):
+                ip_address = stripped.split()[1].split("/", 1)[0]
+            if "state UP" in stripped:
+                status = "active"
+
+        return {"ip_address": ip_address, "status": status}
+
     def read_interface_counters(self, interface: str) -> dict | None:
+        linux_counters = self.read_linux_interface_counters(interface)
+        if linux_counters:
+            return linux_counters
+
         result = subprocess.run(
             ["netstat", "-bI", interface],
             capture_output=True,
@@ -469,6 +768,21 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 continue
 
         return None
+
+    def read_linux_interface_counters(self, interface: str) -> dict | None:
+        stats_dir = Path("/sys/class/net") / interface / "statistics"
+        rx_path = stats_dir / "rx_bytes"
+        tx_path = stats_dir / "tx_bytes"
+        if not rx_path.exists() or not tx_path.exists():
+            return None
+
+        try:
+            return {
+                "rx_bytes": int(rx_path.read_text().strip()),
+                "tx_bytes": int(tx_path.read_text().strip()),
+            }
+        except (OSError, ValueError):
+            return None
 
     def handle_weather_proxy(self) -> None:
         parsed = urlparse(self.path)

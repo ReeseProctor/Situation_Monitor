@@ -1095,9 +1095,10 @@ function renderSpeedtestError(message) {
 function renderSpeedtestPayload(payload) {
   setModuleStatus(elements.module03Status, true, "Module 03 online");
   elements.wifiStatus.textContent = "Speed test complete";
+  const source = payload.source ? String(payload.source).toUpperCase() : "SPEED TEST";
   elements.wifiNote.textContent = payload.interface
-    ? `${String(payload.interface).toUpperCase()} / NETWORK QUALITY`
-    : "NETWORK QUALITY";
+    ? `${String(payload.interface).toUpperCase()} / ${source}`
+    : source;
   elements.wifiSpeed.textContent = formatValue(payload.download_mbps, " Mbps", 1);
   elements.speedtestStatus.textContent = payload.tested_at
     ? `Completed / ${payload.tested_at}`
@@ -1123,7 +1124,7 @@ async function runWifiSpeedtest() {
   }
 
   setSpeedtestButtonState(true);
-  elements.speedtestStatus.textContent = "Running networkQuality test";
+  elements.speedtestStatus.textContent = "Running speed test";
   setModuleSampling(elements.module03Status, "Module 03 speed test running");
   elements.wifiStatus.textContent = "Running speed test";
   elements.wifiNote.textContent = "This may take a few seconds";

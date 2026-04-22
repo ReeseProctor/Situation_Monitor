@@ -34,6 +34,15 @@ The weekly forecast panel uses browser geolocation and proxies forecast requests
 - Weather data is fetched from Open-Meteo with a 7-day forecast in Fahrenheit.
 - If location access is denied or the service is unavailable, the panel shows a styled fallback message instead of breaking layout.
 
+## Wi-Fi speed test module
+
+The speed test panel runs through `/api/wifi-speedtest` on the computer hosting the dashboard.
+
+- On macOS, it uses Apple's `networkQuality` command when available.
+- On Linux, it uses an installed `speedtest` or `speedtest-cli` command when available.
+- If no speed-test CLI is installed, it falls back to a built-in HTTP download/upload test.
+- The built-in fallback can be tuned with `SITUATION_SPEEDTEST_DOWNLOAD_BYTES`, `SITUATION_SPEEDTEST_UPLOAD_BYTES`, `SITUATION_SPEEDTEST_DOWNLOAD_URL`, and `SITUATION_SPEEDTEST_UPLOAD_URL`.
+
 ## Notes
 
 - The frontend accepts flexible JSON shapes and looks for common air-quality keys such as `temperature`, `humidity`, `pm25`, `co2`, `voc`, `aqi`, and `rssi`.
