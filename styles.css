@@ -47,7 +47,7 @@ body::before {
 }
 
 .shell {
-  width: min(1120px, calc(100vw - 32px));
+  width: min(1494px, calc(100vw - 32px));
   margin: 0 auto;
   padding: 56px 0 48px;
 }
@@ -118,7 +118,7 @@ body::before {
 
 .dashboard {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-auto-rows: 640px;
   gap: 1px;
   padding: 1px;
@@ -1220,7 +1220,7 @@ body::before {
   }
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1180px) {
   .shell {
     width: min(720px, calc(100vw - 24px));
     padding-top: 28px;

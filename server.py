@@ -26,6 +26,14 @@ MARKET_URL = os.environ.get(
     "SITUATION_MARKET_URL",
     "https://query1.finance.yahoo.com/v8/finance/chart",
 )
+MARKET_URLS = list(
+    dict.fromkeys(
+        [
+            MARKET_URL,
+            "https://query2.finance.yahoo.com/v8/finance/chart",
+        ]
+    )
+)
 CAMERA_URL = os.environ.get("SITUATION_CAMERA_URL", "http://camera.local/")
 HOST = os.environ.get("SITUATION_MONITOR_HOST", "127.0.0.1")
 PORT = int(os.environ.get("SITUATION_MONITOR_PORT", "8000"))
@@ -56,6 +64,9 @@ WIFI_SAMPLE = {
 }
 SPEEDTEST_STATE = {
     "running": False,
+}
+MARKET_CACHE = {
+    "payload": None,
 }
 
 
@@ -96,6 +107,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                     "sensor_url": SENSOR_URL,
                     "weather_url": WEATHER_URL,
                     "markets_endpoint": "/api/markets",
+                    "market_urls": MARKET_URLS,
                     "camera_url": CAMERA_URL,
                     "camera_health_endpoint": "/api/camera-health",
                     "wifi_endpoint": "/api/wifi",
@@ -202,27 +214,35 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         for item in MARKET_SYMBOLS:
             try:
                 quotes.append(self.fetch_market_quote(item))
-            except (HTTPError, URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+            except (HTTPError, URLError, TimeoutError, ValueError, json.JSONDecodeError, OSError) as exc:
                 errors.append(f"{item['symbol']}: {exc}")
 
         if not quotes:
+            cached_payload = MARKET_CACHE.get("payload")
+            if cached_payload:
+                stale_payload = dict(cached_payload)
+                stale_payload["stale"] = True
+                stale_payload["partial"] = True
+                stale_payload["errors"] = errors[:3]
+                self.send_json(HTTPStatus.OK, stale_payload)
+                return
+
             self.send_json(
                 HTTPStatus.BAD_GATEWAY,
                 {"ok": False, "error": "Market data unavailable", "details": errors},
             )
             return
 
-        self.send_json(
-            HTTPStatus.OK,
-            {
-                "ok": True,
-                "source": "Yahoo Finance",
-                "sampled_at": int(time.time()),
-                "symbols": quotes,
-                "partial": bool(errors),
-                "errors": errors[:2],
-            },
-        )
+        payload = {
+            "ok": True,
+            "source": "Yahoo Finance",
+            "sampled_at": int(time.time()),
+            "symbols": quotes,
+            "partial": bool(errors),
+            "errors": errors[:3],
+        }
+        MARKET_CACHE["payload"] = payload
+        self.send_json(HTTPStatus.OK, payload)
 
     def handle_wifi_speedtest(self) -> None:
         if SPEEDTEST_STATE["running"]:
@@ -559,6 +579,17 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         return value / 1_000_000
 
     def fetch_market_quote(self, item: dict) -> dict:
+        errors = []
+
+        for market_url in MARKET_URLS:
+            try:
+                return self.fetch_yahoo_market_quote(item, market_url)
+            except (HTTPError, URLError, TimeoutError, ValueError, json.JSONDecodeError, OSError) as exc:
+                errors.append(f"{market_url}: {exc}")
+
+        raise ValueError("; ".join(errors) or "No market chart data returned")
+
+    def fetch_yahoo_market_quote(self, item: dict, market_url: str) -> dict:
         symbol = item["symbol"]
         query = urlencode(
             {
@@ -569,10 +600,15 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             }
         )
         request = Request(
-            f"{MARKET_URL}/{quote(symbol, safe='=^-')}" f"?{query}",
+            f"{market_url}/{quote(symbol, safe='=^-')}" f"?{query}",
             headers={
-                "Accept": "application/json",
-                "User-Agent": "SituationMonitor/1.0",
+                "Accept": "application/json,text/plain,*/*",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Connection": "close",
+                "User-Agent": (
+                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/122.0 Safari/537.36 SituationMonitor/1.0"
+                ),
             },
         )
 
@@ -608,6 +644,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
         return {
             "symbol": symbol,
             "label": item["label"],
+            "source_url": market_url,
             "currency": meta.get("currency") or "USD",
             "price": current_price,
             "previous_close": previous_close,

@@ -1,5 +1,11 @@
 const config = window.SITUATION_MONITOR_CONFIG || {};
 
+const DEFAULT_WEATHER_LOCATION = {
+  label: "130 N Martel Ave, Los Angeles, CA 90036",
+  latitude: 34.0751,
+  longitude: -118.3514
+};
+
 const state = {
   sensorRefreshMs: config.refreshMs || 5000,
   weatherRefreshMs: config.weatherRefreshMs || 1800000,
@@ -930,7 +936,9 @@ function renderMarketPayload(payload) {
   elements.marketUpdated.textContent = payload.sampled_at
     ? `Updated / ${formatClock(new Date(payload.sampled_at * 1000))}`
     : `Updated / ${formatClock(new Date())}`;
-  elements.marketSource.textContent = payload.partial
+  elements.marketSource.textContent = payload.stale
+    ? `${payload.source || "Market feed"} / cached`
+    : payload.partial
     ? `${payload.source || "Market feed"} / partial update`
     : `${payload.source || "Market feed"} / 1D intraday`;
 
@@ -973,18 +981,19 @@ function renderMarketError(message) {
 async function loadMarkets() {
   try {
     const response = await fetch(state.marketEndpoint, { cache: "no-store" });
+    const payload = await response.json().catch(() => null);
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      const details = Array.isArray(payload?.details) ? payload.details : [];
+      throw new Error(details[0] || payload?.error || `HTTP ${response.status}`);
     }
 
-    const payload = await response.json();
     if (!payload.ok) {
       throw new Error(payload.error || "Market request failed");
     }
 
     renderMarketPayload(payload);
   } catch (error) {
-    renderMarketError("Market service unavailable");
+    renderMarketError(error.message || "Market service unavailable");
   }
 }
 
@@ -1029,13 +1038,14 @@ function renderWeatherError(message) {
   elements.forecastList.innerHTML = `<div class="forecast-empty">${message}</div>`;
 }
 
-function updateWeatherLocation(position) {
-  const { latitude, longitude } = position.coords;
-  elements.weatherLocation.textContent = "Current location";
-  elements.weatherStatus.textContent = `Lat ${latitude.toFixed(2)} / Lon ${longitude.toFixed(2)}`;
+function updateWeatherLocation({ latitude, longitude, label = "Current location", fallback = false }) {
+  elements.weatherLocation.textContent = label;
+  elements.weatherStatus.textContent = fallback
+    ? `Default location / Lat ${latitude.toFixed(2)} / Lon ${longitude.toFixed(2)}`
+    : `Lat ${latitude.toFixed(2)} / Lon ${longitude.toFixed(2)}`;
 }
 
-async function loadWeather(lat, lon) {
+async function loadWeather(lat, lon, options = {}) {
   const query = new URLSearchParams({
     lat: String(lat),
     lon: String(lon)
@@ -1060,8 +1070,32 @@ async function loadWeather(lat, lon) {
     "weather-alert",
     typeof currentTemp === "number" && currentTemp > 90
   );
-  elements.weatherStatus.textContent = `Forecast loaded / ${formatClock(new Date())}`;
+  elements.weatherStatus.textContent = options.fallback
+    ? `Forecast loaded / ${options.label || "Default location"} / ${formatClock(new Date())}`
+    : `Forecast loaded / ${formatClock(new Date())}`;
   renderWeatherForecast(daily);
+}
+
+async function loadDefaultWeather(reason) {
+  updateWeatherLocation({
+    latitude: DEFAULT_WEATHER_LOCATION.latitude,
+    longitude: DEFAULT_WEATHER_LOCATION.longitude,
+    label: DEFAULT_WEATHER_LOCATION.label,
+    fallback: true
+  });
+
+  try {
+    await loadWeather(
+      DEFAULT_WEATHER_LOCATION.latitude,
+      DEFAULT_WEATHER_LOCATION.longitude,
+      {
+        fallback: true,
+        label: DEFAULT_WEATHER_LOCATION.label
+      }
+    );
+  } catch (error) {
+    renderWeatherError(`${reason}; default weather unavailable`);
+  }
 }
 
 function renderWifiError(message) {
@@ -1150,13 +1184,16 @@ async function runWifiSpeedtest() {
 
 function requestWeather() {
   if (!("geolocation" in navigator)) {
-    renderWeatherError("Geolocation unavailable in this browser");
+    loadDefaultWeather("Geolocation unavailable");
     return;
   }
 
   navigator.geolocation.getCurrentPosition(
     async (position) => {
-      updateWeatherLocation(position);
+      updateWeatherLocation({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude
+      });
 
       try {
         await loadWeather(position.coords.latitude, position.coords.longitude);
@@ -1166,11 +1203,11 @@ function requestWeather() {
     },
     (error) => {
       if (error.code === error.PERMISSION_DENIED) {
-        renderWeatherError("Location access denied");
+        loadDefaultWeather("Location access denied");
         return;
       }
 
-      renderWeatherError("Unable to determine location");
+      loadDefaultWeather("Unable to determine location");
     },
     {
       enableHighAccuracy: false,

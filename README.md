@@ -32,7 +32,8 @@ The weekly forecast panel uses browser geolocation and proxies forecast requests
 
 - The browser will ask for location access on `localhost`.
 - Weather data is fetched from Open-Meteo with a 7-day forecast in Fahrenheit.
-- If location access is denied or the service is unavailable, the panel shows a styled fallback message instead of breaking layout.
+- If location access is denied or unavailable, the dashboard falls back to 130 N Martel Ave, Los Angeles, CA 90036.
+- If the weather service is unavailable, the panel shows a styled fallback message instead of breaking layout.
 
 ## Wi-Fi speed test module
 
@@ -42,6 +43,14 @@ The speed test panel runs through `/api/wifi-speedtest` on the computer hosting 
 - On Linux, it uses an installed `speedtest` or `speedtest-cli` command when available.
 - If no speed-test CLI is installed, it falls back to a built-in HTTP download/upload test.
 - The built-in fallback can be tuned with `SITUATION_SPEEDTEST_DOWNLOAD_BYTES`, `SITUATION_SPEEDTEST_UPLOAD_BYTES`, `SITUATION_SPEEDTEST_DOWNLOAD_URL`, and `SITUATION_SPEEDTEST_UPLOAD_URL`.
+
+## Market module
+
+The market panel uses `/api/markets` to proxy Yahoo Finance chart data through the dashboard server.
+
+- The server tries both Yahoo chart hosts before reporting a failure.
+- The latest successful response is cached in memory, so a temporary network failure does not immediately blank the panel.
+- If Raspberry Pi OS cannot fetch market data, check that the Pi has internet access, correct system time, and working CA certificates.
 
 ## Notes
 
