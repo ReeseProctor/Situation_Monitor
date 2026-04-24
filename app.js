@@ -26,7 +26,8 @@ const state = {
   sensorTimer: null,
   marketTimer: null,
   cameraTimer: null,
-  weatherTimer: null
+  weatherTimer: null,
+  weatherRetryTimer: null
 };
 
 const DEFAULT_LAYOUT_ORDER = Array.from(document.querySelectorAll(".dashboard > .panel[data-module-id]"))
@@ -1090,6 +1091,8 @@ async function loadWeather(lat, lon, options = {}) {
   const currentTemp = payload.current?.temperature_2m ?? payload.current_weather?.temperature;
 
   setModuleStatus(elements.module02Status, true, "Module 02 online");
+  clearTimeout(state.weatherRetryTimer);
+  state.weatherRetryTimer = null;
   elements.weatherSummary.textContent = currentTemp != null
     ? formatValue(currentTemp, "F", 0)
     : "--";
@@ -1122,7 +1125,15 @@ async function loadDefaultWeather(reason) {
     );
   } catch (error) {
     renderWeatherError(`${reason}; default weather unavailable`);
+    scheduleWeatherRetry();
   }
+}
+
+function scheduleWeatherRetry() {
+  clearTimeout(state.weatherRetryTimer);
+  state.weatherRetryTimer = window.setTimeout(() => {
+    requestWeather();
+  }, 60000);
 }
 
 function renderWifiError(message) {
@@ -1227,6 +1238,7 @@ function requestWeather() {
         await loadWeather(position.coords.latitude, position.coords.longitude);
       } catch (error) {
         renderWeatherError("Weather service unavailable");
+        scheduleWeatherRetry();
       }
     },
     (error) => {
