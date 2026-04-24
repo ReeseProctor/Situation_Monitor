@@ -1,4 +1,4 @@
-# Situation Monitor
+# Martel Situation Monitor
 
 A lightweight local dashboard for house sensors with a monochrome terminal-style interface.
 
@@ -50,6 +50,7 @@ The market panel uses `/api/markets` to proxy Yahoo Finance chart data through t
 
 - The server tries both Yahoo chart hosts before reporting a failure.
 - The latest successful response is cached in memory, so a temporary network failure does not immediately blank the panel.
+- The browser refreshes market data every 5 minutes while the dashboard is open.
 - If Raspberry Pi OS cannot fetch market data, check that the Pi has internet access, correct system time, and working CA certificates.
 
 ## Notes

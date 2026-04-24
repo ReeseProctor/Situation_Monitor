@@ -35,6 +35,10 @@ const DEFAULT_LAYOUT_ORDER = Array.from(document.querySelectorAll(".dashboard > 
 const elements = {
   dashboard: document.querySelector("#dashboard"),
   clock: document.querySelector("#clock"),
+  pageRefreshButton: document.querySelector("#page-refresh-button"),
+  module01Panel: document.querySelector("#module-01-panel"),
+  module03Panel: document.querySelector("#module-03-panel"),
+  module04Panel: document.querySelector("#module-04-panel"),
   layoutToggleButton: document.querySelector("#layout-toggle-button"),
   layoutResetButton: document.querySelector("#layout-reset-button"),
   pollState: document.querySelector("#poll-state"),
@@ -460,10 +464,15 @@ function setModuleStatus(element, online, label) {
     return;
   }
 
+  const wasOnline = element.classList.contains("status-light--online");
   element.classList.toggle("status-light--online", online);
   element.classList.toggle("status-light--offline", !online);
   element.classList.remove("status-light--sampling");
   element.setAttribute("aria-label", label);
+
+  if (online && !wasOnline) {
+    pulsePanel(element.closest(".panel"));
+  }
 }
 
 function setModuleSampling(element, label) {
@@ -785,6 +794,19 @@ function handleLifeSettingsSubmit(event) {
   renderLifeProgress();
 }
 
+function pulsePanel(panel) {
+  if (!panel) {
+    return;
+  }
+
+  panel.classList.remove("panel--sample-pulse");
+  void panel.offsetWidth;
+  panel.classList.add("panel--sample-pulse");
+  window.setTimeout(() => {
+    panel.classList.remove("panel--sample-pulse");
+  }, 1050);
+}
+
 function renderSensorPayload(payload, reading, options = {}) {
   const isFallback = options.fallback === true;
 
@@ -812,6 +834,10 @@ function renderSensorPayload(payload, reading, options = {}) {
   elements.comfortValue.textContent = `${reading.comfortIndex} / 100`;
   elements.payloadPreview.textContent = JSON.stringify(payload, null, 2);
   elements.pollState.textContent = "Dashboard active";
+
+  if (!isFallback) {
+    pulsePanel(elements.module01Panel);
+  }
 }
 
 async function loadSensorData() {
@@ -967,6 +993,7 @@ function renderMarketPayload(payload) {
   });
 
   elements.marketList.innerHTML = rows.join("");
+  pulsePanel(elements.module04Panel);
 }
 
 function renderMarketError(message) {
@@ -1150,6 +1177,7 @@ function renderSpeedtestPayload(payload) {
   elements.wifiLastCheck.textContent = payload.tested_at
     ? `Completed ${payload.tested_at}`
     : `Completed ${formatClock(new Date())}`;
+  pulsePanel(elements.module03Panel);
 }
 
 async function runWifiSpeedtest() {
@@ -1231,6 +1259,9 @@ function startPolling() {
 bindLayoutEditor();
 loadSavedLayout();
 
+elements.pageRefreshButton.addEventListener("click", () => {
+  window.location.reload();
+});
 elements.wifiSpeedtestButton.addEventListener("click", () => {
   runWifiSpeedtest();
 });

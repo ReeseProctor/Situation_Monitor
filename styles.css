@@ -16,6 +16,31 @@
 
 * {
   box-sizing: border-box;
+  scrollbar-color: rgba(245, 241, 235, 0.18) rgba(255, 255, 255, 0.035);
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(245, 241, 235, 0.16);
+  border: 2px solid rgba(8, 8, 8, 0.92);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 241, 235, 0.26);
+}
+
+*::-webkit-scrollbar-corner {
+  background: #060606;
 }
 
 html,
@@ -27,8 +52,12 @@ body {
   margin: 0;
   font-family: var(--font-mono);
   background:
+    radial-gradient(ellipse at left center, rgba(255, 148, 64, 0.14), transparent 50%),
+    radial-gradient(ellipse at right center, rgba(255, 126, 44, 0.13), transparent 52%),
+    radial-gradient(ellipse at bottom center, rgba(255, 112, 36, 0.095), transparent 48%),
+    radial-gradient(ellipse at top center, rgba(255, 168, 92, 0.055), transparent 42%),
     radial-gradient(circle at top, rgba(255, 255, 255, 0.04), transparent 32%),
-    linear-gradient(180deg, #090909, #040404 58%);
+    linear-gradient(180deg, #0c0907, #050404 58%);
   color: var(--text);
   letter-spacing: 0.02em;
 }
@@ -145,6 +174,22 @@ body::before {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), transparent 28%);
   opacity: 0.25;
   pointer-events: none;
+}
+
+.panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid transparent;
+  box-shadow: none;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(1);
+  z-index: 6;
+}
+
+.panel--sample-pulse::before {
+  animation: sample-pulse 950ms ease-out;
 }
 
 .gauge-panel {
@@ -1217,6 +1262,46 @@ body::before {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes sample-pulse {
+  0% {
+    border-color: rgba(255, 255, 255, 0);
+    opacity: 0;
+    transform: scale(1);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0),
+      0 0 0 rgba(255, 255, 255, 0);
+  }
+
+  18% {
+    border-color: rgba(255, 255, 255, 0.54);
+    opacity: 0.62;
+    transform: scale(1);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.62),
+      inset 0 0 20px rgba(255, 255, 255, 0.08),
+      0 0 18px rgba(255, 255, 255, 0.14);
+  }
+
+  48% {
+    border-color: rgba(255, 255, 255, 0.3);
+    opacity: 0.34;
+    transform: scale(1);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.34),
+      inset 0 0 12px rgba(255, 255, 255, 0.05),
+      0 0 12px rgba(255, 255, 255, 0.09);
+  }
+
+  100% {
+    border-color: rgba(255, 255, 255, 0);
+    opacity: 0;
+    transform: scale(1);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0),
+      0 0 0 rgba(255, 255, 255, 0);
   }
 }
 

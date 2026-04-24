@@ -3,15 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Situation Monitor</title>
-    <link rel="stylesheet" href="./styles.css?v=20260422-four-column" />
+    <title>Martel Situation Monitor</title>
+    <link rel="stylesheet" href="./styles.css?v=20260422-orange-edge-bg-2" />
   </head>
   <body>
     <div class="shell">
       <header class="masthead">
         <div>
           <p class="kicker">REPRO+</p>
-          <h1>Situation Monitor</h1>
+          <h1>Martel Situation Monitor</h1>
         </div>
         <div class="masthead-meta">
           <div class="masthead-status">
@@ -19,6 +19,7 @@
             <span id="poll-state">Dashboard active</span>
           </div>
           <div class="layout-controls">
+            <button class="panel-button panel-button--compact panel-button--ghost" id="page-refresh-button" type="button">Refresh page</button>
             <button class="panel-button panel-button--compact panel-button--ghost" id="layout-toggle-button" type="button" aria-pressed="false">Rearrange modules</button>
             <button class="panel-button panel-button--compact panel-button--ghost" id="layout-reset-button" type="button">Reset layout</button>
           </div>
@@ -26,7 +27,7 @@
       </header>
 
       <main class="dashboard" id="dashboard" data-layout-edit="false">
-        <section class="panel gauge-panel live-panel reveal" data-module-id="module-01">
+        <section class="panel gauge-panel live-panel reveal" id="module-01-panel" data-module-id="module-01">
           <div class="panel-head">
             <p class="panel-label">Module 01</p>
             <div class="panel-head__meta">
@@ -91,7 +92,7 @@
           <div class="weather-panel__footer subtle" id="weather-status">Waiting for location access</div>
         </section>
 
-        <section class="panel timing-panel wifi-panel reveal" data-module-id="module-03">
+        <section class="panel timing-panel wifi-panel reveal" id="module-03-panel" data-module-id="module-03">
           <div class="panel-head">
             <p class="panel-label">Module 03</p>
             <div class="panel-head__meta">
@@ -138,7 +139,7 @@
           </div>
         </section>
 
-        <section class="panel metric-panel market-panel reveal" data-module-id="module-04">
+        <section class="panel metric-panel market-panel reveal" id="module-04-panel" data-module-id="module-04">
           <div class="panel-head">
             <p class="panel-label">Module 04</p>
             <div class="panel-head__meta">
@@ -377,6 +378,6 @@
         cameraUrl: "http://camera.local/"
       };
     </script>
-    <script src="./app.js?v=20260422-martel-weather"></script>
+    <script src="./app.js?v=20260422-softer-pulse"></script>
   </body>
 </html>
