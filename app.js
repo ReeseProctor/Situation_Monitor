@@ -328,15 +328,16 @@ function renderCameraMotion(payload) {
     return;
   }
 
-  stopCameraMotionPulse();
-
   if (payload?.motion_recent) {
+    startCameraMotionPulse();
     const seconds = typeof payload.seconds_since_motion === "number" && payload.seconds_since_motion >= 0
       ? `${payload.seconds_since_motion}s ago`
       : "recently";
     elements.cameraNote.textContent = `Recent motion / ${seconds}`;
     return;
   }
+
+  stopCameraMotionPulse();
 
   const count = typeof payload?.motion_count === "number" ? payload.motion_count : 0;
   elements.cameraNote.textContent = count > 0
