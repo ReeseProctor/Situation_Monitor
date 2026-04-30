@@ -11,11 +11,13 @@ const state = {
   weatherRefreshMs: config.weatherRefreshMs || 1800000,
   marketRefreshMs: config.marketRefreshMs || 300000,
   cameraRefreshMs: config.cameraRefreshMs || 15000,
+  cameraMotionRefreshMs: config.cameraMotionRefreshMs || 3000,
   sensorEndpoint: config.endpoint || "/api/air",
   weatherEndpoint: config.weatherEndpoint || "/api/weather",
   marketEndpoint: config.marketEndpoint || "/api/markets",
   wifiSpeedtestEndpoint: config.wifiSpeedtestEndpoint || "/api/wifi-speedtest",
   cameraHealthEndpoint: config.cameraHealthEndpoint || "/api/camera-health",
+  cameraMotionEndpoint: config.cameraMotionEndpoint || "/api/camera-motion",
   cameraUrl: config.cameraUrl || "http://camera.local/",
   layoutStorageKey: "situation-monitor-layout-v1",
   lifeSettingsStorageKey: "situation-monitor-life-settings-v1",
@@ -26,6 +28,8 @@ const state = {
   sensorTimer: null,
   marketTimer: null,
   cameraTimer: null,
+  cameraMotionTimer: null,
+  cameraMotionPulseTimer: null,
   weatherTimer: null,
   weatherRetryTimer: null
 };
@@ -279,6 +283,7 @@ function renderCameraFrameLoaded() {
 }
 
 function renderCameraOffline(message = "Unable to reach the camera") {
+  stopCameraMotionPulse();
   setModuleStatus(elements.module06Status, false, "Module 06 offline");
   elements.cameraStatus.textContent = "Camera unavailable";
   elements.cameraNote.textContent = message;
@@ -296,7 +301,9 @@ function renderCameraHealth(payload) {
   setModuleStatus(elements.module06Status, true, "Module 06 online");
   elements.cameraStatus.textContent = "Camera feed active";
   elements.cameraSource.textContent = "XIAO ESP32S3 Sense / camera.local";
-  elements.cameraNote.textContent = "Embedded live view";
+  if (!elements.cameraNote.textContent || elements.cameraNote.textContent === "Embedded live view") {
+    elements.cameraNote.textContent = "Monitoring PIR motion";
+  }
   elements.cameraFooter.textContent = payload.checked_at
     ? `Camera reachable / ${formatClock(new Date(payload.checked_at * 1000))}`
     : "Camera reachable";
@@ -306,6 +313,35 @@ function renderCameraHealth(payload) {
   } else {
     elements.cameraOverlay.textContent = "Loading camera frame";
   }
+}
+
+function renderCameraMotion(payload) {
+  if (!payload?.motion_available && payload?.ok === false) {
+    stopCameraMotionPulse();
+    elements.cameraNote.textContent = "Motion status unavailable";
+    return;
+  }
+
+  if (payload?.motion_active) {
+    startCameraMotionPulse();
+    elements.cameraNote.textContent = "Motion detected now";
+    return;
+  }
+
+  stopCameraMotionPulse();
+
+  if (payload?.motion_recent) {
+    const seconds = typeof payload.seconds_since_motion === "number" && payload.seconds_since_motion >= 0
+      ? `${payload.seconds_since_motion}s ago`
+      : "recently";
+    elements.cameraNote.textContent = `Recent motion / ${seconds}`;
+    return;
+  }
+
+  const count = typeof payload?.motion_count === "number" ? payload.motion_count : 0;
+  elements.cameraNote.textContent = count > 0
+    ? `No motion now / ${count} events seen`
+    : "No motion detected yet";
 }
 
 function renderFunnyPhotoReady() {
@@ -337,6 +373,20 @@ async function loadCameraHealth() {
     renderCameraHealth(payload);
   } catch (error) {
     renderCameraOffline("Camera host is offline");
+  }
+}
+
+async function loadCameraMotion() {
+  try {
+    const response = await fetch(state.cameraMotionEndpoint, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const payload = await response.json();
+    renderCameraMotion(payload);
+  } catch (error) {
+    elements.cameraNote.textContent = "Motion status unavailable";
   }
 }
 
@@ -808,6 +858,27 @@ function pulsePanel(panel) {
   }, 1050);
 }
 
+function startCameraMotionPulse() {
+  if (state.cameraMotionPulseTimer) {
+    return;
+  }
+
+  pulsePanel(elements.module06Panel);
+  state.cameraMotionPulseTimer = window.setInterval(() => {
+    pulsePanel(elements.module06Panel);
+  }, 1200);
+}
+
+function stopCameraMotionPulse() {
+  if (!state.cameraMotionPulseTimer) {
+    return;
+  }
+
+  window.clearInterval(state.cameraMotionPulseTimer);
+  state.cameraMotionPulseTimer = null;
+  elements.module06Panel.classList.remove("panel--sample-pulse");
+}
+
 function renderSensorPayload(payload, reading, options = {}) {
   const isFallback = options.fallback === true;
 
@@ -1261,10 +1332,13 @@ function startPolling() {
   clearInterval(state.sensorTimer);
   clearInterval(state.marketTimer);
   clearInterval(state.cameraTimer);
+  clearInterval(state.cameraMotionTimer);
+  stopCameraMotionPulse();
   clearInterval(state.weatherTimer);
   state.sensorTimer = window.setInterval(loadSensorData, state.sensorRefreshMs);
   state.marketTimer = window.setInterval(loadMarkets, state.marketRefreshMs);
   state.cameraTimer = window.setInterval(loadCameraHealth, state.cameraRefreshMs);
+  state.cameraMotionTimer = window.setInterval(loadCameraMotion, state.cameraMotionRefreshMs);
   state.weatherTimer = window.setInterval(requestWeather, state.weatherRefreshMs);
 }
 
@@ -1307,5 +1381,6 @@ loadMarkets();
 requestWeather();
 runWifiSpeedtest();
 loadCameraHealth();
+loadCameraMotion();
 refreshCameraFrame();
 startPolling();

@@ -26,6 +26,13 @@ Override it if needed:
 SITUATION_SENSOR_URL="http://airmonitor.local/data" python3 server.py
 ```
 
+## Camera motion endpoint
+
+The dashboard now also polls camera motion through `/api/camera-motion`.
+
+- Default upstream: `http://camera.local/motion`
+- Override if needed with `SITUATION_CAMERA_MOTION_URL`
+
 ## Weather module
 
 The weekly forecast panel uses browser geolocation and proxies forecast requests through `/api/weather`.

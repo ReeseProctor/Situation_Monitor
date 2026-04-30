@@ -35,6 +35,10 @@ MARKET_URLS = list(
     )
 )
 CAMERA_URL = os.environ.get("SITUATION_CAMERA_URL", "http://camera.local/")
+CAMERA_MOTION_URL = os.environ.get(
+    "SITUATION_CAMERA_MOTION_URL",
+    f"{CAMERA_URL.rstrip('/')}/motion",
+)
 HOST = os.environ.get("SITUATION_MONITOR_HOST", "127.0.0.1")
 PORT = int(os.environ.get("SITUATION_MONITOR_PORT", "8000"))
 SPEEDTEST_DOWNLOAD_URL = os.environ.get(
@@ -91,6 +95,10 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.handle_camera_health()
             return
 
+        if self.path == "/api/camera-motion":
+            self.handle_camera_motion()
+            return
+
         if self.path == "/api/wifi":
             self.handle_wifi_proxy()
             return
@@ -110,6 +118,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                     "market_urls": MARKET_URLS,
                     "camera_url": CAMERA_URL,
                     "camera_health_endpoint": "/api/camera-health",
+                    "camera_motion_url": CAMERA_MOTION_URL,
+                    "camera_motion_endpoint": "/api/camera-motion",
                     "wifi_endpoint": "/api/wifi",
                     "wifi_speedtest_endpoint": "/api/wifi-speedtest",
                     "root": str(ROOT),
@@ -206,6 +216,40 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 "checked_at": int(time.time()),
             },
         )
+
+    def handle_camera_motion(self) -> None:
+        request = Request(
+            CAMERA_MOTION_URL,
+            headers={
+                "Accept": "application/json,text/plain;q=0.9,*/*;q=0.8",
+                "User-Agent": "SituationMonitor/1.0",
+            },
+        )
+
+        try:
+            with urlopen(request, timeout=3) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+        except HTTPError as exc:
+            self.send_json(
+                HTTPStatus.BAD_GATEWAY,
+                {"ok": False, "motion_available": False, "error": f"Camera motion returned HTTP {exc.code}"},
+            )
+            return
+        except URLError as exc:
+            self.send_json(
+                HTTPStatus.BAD_GATEWAY,
+                {"ok": False, "motion_available": False, "error": f"Camera motion unavailable: {exc.reason}"},
+            )
+            return
+        except (TimeoutError, json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
+            self.send_json(
+                HTTPStatus.BAD_GATEWAY,
+                {"ok": False, "motion_available": False, "error": f"Camera motion error: {exc}"},
+            )
+            return
+
+        payload["motion_available"] = True
+        self.send_json(HTTPStatus.OK, payload)
 
     def handle_markets_proxy(self) -> None:
         quotes = []
