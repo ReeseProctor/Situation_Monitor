@@ -394,6 +394,7 @@ async function loadCameraMotion() {
     const payload = await response.json();
     renderCameraMotion(payload);
   } catch (error) {
+    stopCameraMotionPulse();
     elements.cameraNote.textContent = "Motion status unavailable";
   }
 }
@@ -879,12 +880,11 @@ function startCameraMotionPulse() {
 }
 
 function stopCameraMotionPulse() {
-  if (!state.cameraMotionPulseTimer) {
-    return;
+  if (state.cameraMotionPulseTimer) {
+    window.clearInterval(state.cameraMotionPulseTimer);
+    state.cameraMotionPulseTimer = null;
   }
 
-  window.clearInterval(state.cameraMotionPulseTimer);
-  state.cameraMotionPulseTimer = null;
   elements.module06Panel.classList.remove("panel--sample-pulse");
   elements.cameraFrameWrap.classList.remove("camera-frame-wrap--motion");
 }
