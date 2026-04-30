@@ -864,6 +864,7 @@ function startCameraMotionPulse() {
     return;
   }
 
+  elements.cameraFrameWrap.classList.add("camera-frame-wrap--motion");
   pulsePanel(elements.module06Panel);
   state.cameraMotionPulseTimer = window.setInterval(() => {
     pulsePanel(elements.module06Panel);
@@ -878,6 +879,7 @@ function stopCameraMotionPulse() {
   window.clearInterval(state.cameraMotionPulseTimer);
   state.cameraMotionPulseTimer = null;
   elements.module06Panel.classList.remove("panel--sample-pulse");
+  elements.cameraFrameWrap.classList.remove("camera-frame-wrap--motion");
 }
 
 function renderSensorPayload(payload, reading, options = {}) {
