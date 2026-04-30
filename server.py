@@ -78,6 +78,11 @@ class DashboardHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
 
+    def end_headers(self) -> None:
+        if self.path == "/" or self.path.startswith("/index.html") or self.path.endswith(".js") or self.path.endswith(".css"):
+          self.send_header("Cache-Control", "no-store")
+        super().end_headers()
+
     def do_GET(self) -> None:
         if self.path == "/api/air":
             self.handle_sensor_proxy()
