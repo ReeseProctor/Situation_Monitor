@@ -6,6 +6,10 @@ const DEFAULT_WEATHER_LOCATION = {
   longitude: -118.3514
 };
 
+const CAMERA_NOTE_MONITORING = "Monitoring PIR motion";
+const CAMERA_NOTE_RECONNECTING = "Attempting reconnect";
+const CAMERA_NOTE_OFFLINE = "Camera host is offline";
+
 const state = {
   sensorRefreshMs: config.refreshMs || 5000,
   weatherRefreshMs: config.weatherRefreshMs || 1800000,
@@ -269,7 +273,7 @@ function refreshCameraFrame() {
   elements.cameraFrameWrap.classList.remove("camera-frame-wrap--ready");
   setModuleSampling(elements.module06Status, "Module 06 camera loading");
   elements.cameraStatus.textContent = "Loading camera feed";
-  elements.cameraNote.textContent = "Attempting reconnect";
+  elements.cameraNote.textContent = CAMERA_NOTE_RECONNECTING;
   elements.cameraFrame.src = nextUrl;
   loadCameraHealth();
   loadCameraMotion();
@@ -303,11 +307,10 @@ function renderCameraHealth(payload) {
   elements.cameraSource.textContent = "XIAO ESP32S3 Sense / camera.local";
   if (
     !elements.cameraNote.textContent ||
-    elements.cameraNote.textContent === "Embedded live view" ||
-    elements.cameraNote.textContent === "Attempting reconnect" ||
-    elements.cameraNote.textContent === "Camera host is offline"
+    elements.cameraNote.textContent === CAMERA_NOTE_RECONNECTING ||
+    elements.cameraNote.textContent === CAMERA_NOTE_OFFLINE
   ) {
-    elements.cameraNote.textContent = "Monitoring PIR motion";
+    elements.cameraNote.textContent = CAMERA_NOTE_MONITORING;
   }
   elements.cameraFooter.textContent = payload.checked_at
     ? `Camera reachable / ${formatClock(new Date(payload.checked_at * 1000))}`
@@ -388,7 +391,7 @@ async function loadCameraHealth() {
     const payload = await response.json();
     renderCameraHealth(payload);
   } catch (error) {
-    renderCameraOffline("Camera host is offline");
+    renderCameraOffline(CAMERA_NOTE_OFFLINE);
   }
 }
 
