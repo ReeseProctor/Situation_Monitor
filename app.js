@@ -320,6 +320,8 @@ function renderCameraHealth(payload) {
 }
 
 function renderCameraMotion(payload) {
+  const pulseWindowSeconds = 5;
+
   if (!payload?.motion_available && payload?.ok === false) {
     stopCameraMotionPulse();
     elements.cameraNote.textContent = "Motion status unavailable";
@@ -337,6 +339,12 @@ function renderCameraMotion(payload) {
   const secondsSinceMotion = typeof payload.seconds_since_motion === "number"
     ? payload.seconds_since_motion
     : null;
+  const shouldPulseRecent = payload?.motion_recent && secondsSinceMotion !== null && secondsSinceMotion >= 0 && secondsSinceMotion <= pulseWindowSeconds;
+
+  if (shouldPulseRecent) {
+    startCameraMotionPulse();
+  }
+
   if (payload?.motion_recent) {
     const seconds = secondsSinceMotion !== null && secondsSinceMotion >= 0
       ? `${secondsSinceMotion}s ago`
