@@ -316,8 +316,6 @@ function renderCameraHealth(payload) {
 }
 
 function renderCameraMotion(payload) {
-  const pulseWindowSeconds = 15;
-
   if (!payload?.motion_available && payload?.ok === false) {
     stopCameraMotionPulse();
     elements.cameraNote.textContent = "Motion status unavailable";
@@ -330,21 +328,18 @@ function renderCameraMotion(payload) {
     return;
   }
 
+  stopCameraMotionPulse();
+
   const secondsSinceMotion = typeof payload.seconds_since_motion === "number"
     ? payload.seconds_since_motion
     : null;
-  const shouldPulseRecent = payload?.motion_recent && secondsSinceMotion !== null && secondsSinceMotion <= pulseWindowSeconds;
-
-  if (shouldPulseRecent) {
-    startCameraMotionPulse();
-    const seconds = secondsSinceMotion >= 0
+  if (payload?.motion_recent) {
+    const seconds = secondsSinceMotion !== null && secondsSinceMotion >= 0
       ? `${secondsSinceMotion}s ago`
       : "recently";
     elements.cameraNote.textContent = `Recent motion / ${seconds}`;
     return;
   }
-
-  stopCameraMotionPulse();
 
   const count = typeof payload?.motion_count === "number" ? payload.motion_count : 0;
   elements.cameraNote.textContent = count > 0
