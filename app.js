@@ -1387,6 +1387,5 @@ loadSensorData();
 loadMarkets();
 requestWeather();
 runWifiSpeedtest();
-loadCameraHealth();
-loadCameraMotion();
+refreshCameraFrame();
 startPolling();
