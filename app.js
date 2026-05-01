@@ -272,6 +272,7 @@ function refreshCameraFrame() {
   elements.cameraNote.textContent = "Attempting reconnect";
   elements.cameraFrame.src = nextUrl;
   loadCameraHealth();
+  loadCameraMotion();
 }
 
 function renderCameraFrameLoaded() {
@@ -386,7 +387,6 @@ async function loadCameraHealth() {
 
     const payload = await response.json();
     renderCameraHealth(payload);
-    loadCameraMotion();
   } catch (error) {
     renderCameraOffline("Camera host is offline");
   }
@@ -877,11 +877,9 @@ function pulsePanel(panel) {
 
 function startCameraMotionPulse() {
   elements.cameraFrameWrap.classList.add("camera-frame-wrap--motion");
-  elements.module06Panel.classList.add("panel--sample-pulse");
 }
 
 function stopCameraMotionPulse() {
-  elements.module06Panel.classList.remove("panel--sample-pulse");
   elements.cameraFrameWrap.classList.remove("camera-frame-wrap--motion");
 }
 
@@ -1388,5 +1386,4 @@ requestWeather();
 runWifiSpeedtest();
 loadCameraHealth();
 loadCameraMotion();
-refreshCameraFrame();
 startPolling();
