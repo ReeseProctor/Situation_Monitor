@@ -9,6 +9,7 @@ const DEFAULT_WEATHER_LOCATION = {
 const CAMERA_NOTE_MONITORING = "Monitoring PIR motion";
 const CAMERA_NOTE_RECONNECTING = "Attempting reconnect";
 const CAMERA_NOTE_OFFLINE = "Camera host is offline";
+const CAMERA_NOTE_MOTION_UNAVAILABLE = "Motion status unavailable";
 
 const state = {
   sensorRefreshMs: config.refreshMs || 5000,
@@ -266,24 +267,28 @@ function persistLifeSettings(settings) {
   }
 }
 
+function loadCameraSnapshot() {
+  loadCameraHealth();
+  loadCameraMotion();
+}
+
 function refreshCameraFrame() {
   const separator = state.cameraUrl.includes("?") ? "&" : "?";
   const nextUrl = `${state.cameraUrl}${separator}ts=${Date.now()}`;
+  // Keep iframe refresh plus health/motion refresh together so startup and
+  // manual reconnects always drive the same camera state transitions.
   elements.cameraOverlay.textContent = "Refreshing camera";
   elements.cameraFrameWrap.classList.remove("camera-frame-wrap--ready");
   setModuleSampling(elements.module06Status, "Module 06 camera loading");
   elements.cameraStatus.textContent = "Loading camera feed";
   elements.cameraNote.textContent = CAMERA_NOTE_RECONNECTING;
   elements.cameraFrame.src = nextUrl;
-  loadCameraHealth();
-  loadCameraMotion();
+  loadCameraSnapshot();
 }
 
 function renderCameraFrameLoaded() {
   elements.cameraFrameWrap.classList.add("camera-frame-wrap--ready");
-  if (elements.cameraOverlay.textContent === "Connecting to camera") {
-    elements.cameraOverlay.textContent = "";
-  }
+  elements.cameraOverlay.textContent = "";
 }
 
 function renderCameraOffline(message = "Unable to reach the camera") {
@@ -328,7 +333,7 @@ function renderCameraMotion(payload) {
 
   if (!payload?.motion_available && payload?.ok === false) {
     stopCameraMotionPulse();
-    elements.cameraNote.textContent = "Motion status unavailable";
+    elements.cameraNote.textContent = CAMERA_NOTE_MOTION_UNAVAILABLE;
     return;
   }
 
@@ -406,7 +411,7 @@ async function loadCameraMotion() {
     renderCameraMotion(payload);
   } catch (error) {
     stopCameraMotionPulse();
-    elements.cameraNote.textContent = "Motion status unavailable";
+    elements.cameraNote.textContent = CAMERA_NOTE_MOTION_UNAVAILABLE;
   }
 }
 
@@ -1349,6 +1354,11 @@ function startPolling() {
   state.weatherTimer = window.setInterval(requestWeather, state.weatherRefreshMs);
 }
 
+function initializeCameraModule() {
+  refreshCameraFrame();
+  startPolling();
+}
+
 bindLayoutEditor();
 loadSavedLayout();
 
@@ -1387,5 +1397,4 @@ loadSensorData();
 loadMarkets();
 requestWeather();
 runWifiSpeedtest();
-refreshCameraFrame();
-startPolling();
+initializeCameraModule();
