@@ -300,7 +300,12 @@ function renderCameraHealth(payload) {
   setModuleStatus(elements.module06Status, true, "Module 06 online");
   elements.cameraStatus.textContent = "Camera feed active";
   elements.cameraSource.textContent = "XIAO ESP32S3 Sense / camera.local";
-  if (!elements.cameraNote.textContent || elements.cameraNote.textContent === "Embedded live view") {
+  if (
+    !elements.cameraNote.textContent ||
+    elements.cameraNote.textContent === "Embedded live view" ||
+    elements.cameraNote.textContent === "Attempting reconnect" ||
+    elements.cameraNote.textContent === "Camera host is offline"
+  ) {
     elements.cameraNote.textContent = "Monitoring PIR motion";
   }
   elements.cameraFooter.textContent = payload.checked_at
@@ -373,6 +378,7 @@ async function loadCameraHealth() {
 
     const payload = await response.json();
     renderCameraHealth(payload);
+    loadCameraMotion();
   } catch (error) {
     renderCameraOffline("Camera host is offline");
   }
