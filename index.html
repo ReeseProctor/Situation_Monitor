@@ -272,17 +272,48 @@
           </div>
         </section>
 
-        <section class="panel metric-panel placeholder-panel reveal" data-module-id="module-08">
+        <section class="panel metric-panel pomodoro-panel reveal" id="module-08-panel" data-module-id="module-08">
           <div class="panel-head">
             <p class="panel-label">Module 08</p>
             <div class="panel-head__meta">
               <span class="module-handle" aria-hidden="true">Drag</span>
-              <span class="status-light status-light--offline" aria-label="Module 08 offline"></span>
+              <span class="status-light status-light--offline" id="module-08-status" aria-label="Module 08 offline"></span>
             </div>
           </div>
-          <div class="placeholder-block">
-            <span class="placeholder-title">Reserved</span>
-            <span class="placeholder-copy">Additional module slot reserved for future use</span>
+          <div class="pomodoro-panel__intro">
+            <div>
+              <span class="pomodoro-panel__headline" id="pomodoro-status">Pomodoro ready</span>
+              <span class="subtle" id="pomodoro-note">Focus session standing by</span>
+            </div>
+            <button class="panel-button panel-button--compact panel-button--ghost" id="pomodoro-settings-button" type="button">Settings</button>
+          </div>
+          <div class="pomodoro-timer">
+            <span class="pomodoro-timer__value" id="pomodoro-time">25:00</span>
+            <span class="subtle" id="pomodoro-mode">Focus / 25 min</span>
+          </div>
+          <div class="pomodoro-detail-grid">
+            <div>
+              <span class="detail-term">Focus length</span>
+              <span class="detail-value" id="pomodoro-focus-length">25 min</span>
+            </div>
+            <div>
+              <span class="detail-term">Break length</span>
+              <span class="detail-value" id="pomodoro-break-length">5 min</span>
+            </div>
+            <div>
+              <span class="detail-term">Sound</span>
+              <span class="detail-value" id="pomodoro-sound-state">On</span>
+            </div>
+            <div>
+              <span class="detail-term">Next</span>
+              <span class="detail-value" id="pomodoro-next-mode">Break</span>
+            </div>
+          </div>
+          <div class="pomodoro-panel__footer">
+            <button class="panel-button panel-button--compact" id="pomodoro-start-button" type="button">Start</button>
+            <button class="panel-button panel-button--compact panel-button--ghost" id="pomodoro-pause-button" type="button">Pause</button>
+            <button class="panel-button panel-button--compact panel-button--ghost" id="pomodoro-reset-button" type="button">Restart</button>
+            <button class="panel-button panel-button--compact panel-button--ghost" id="pomodoro-mute-button" type="button" aria-pressed="false">Mute</button>
           </div>
         </section>
 
@@ -365,6 +396,27 @@
       </form>
     </dialog>
 
+    <dialog class="life-dialog" id="pomodoro-settings-dialog">
+      <form class="life-dialog__form" id="pomodoro-settings-form" method="dialog">
+        <div class="life-dialog__head">
+          <span class="life-dialog__title">Pomodoro settings</span>
+          <span class="subtle">Timer lengths are stored locally in this browser.</span>
+        </div>
+        <label class="life-dialog__field">
+          <span class="detail-term">Focus length</span>
+          <input class="life-dialog__input" id="pomodoro-focus-input" name="focusMinutes" type="number" min="1" max="180" step="1" value="25" />
+        </label>
+        <label class="life-dialog__field">
+          <span class="detail-term">Break length</span>
+          <input class="life-dialog__input" id="pomodoro-break-input" name="breakMinutes" type="number" min="1" max="60" step="1" value="5" />
+        </label>
+        <div class="life-dialog__actions">
+          <button class="panel-button panel-button--compact panel-button--ghost" id="pomodoro-settings-cancel" type="button">Cancel</button>
+          <button class="panel-button panel-button--compact" type="submit">Save settings</button>
+        </div>
+      </form>
+    </dialog>
+
     <script>
       window.SITUATION_MONITOR_CONFIG = {
         refreshMs: 5000,
@@ -378,6 +430,6 @@
         cameraUrl: "http://camera.local/"
       };
     </script>
-    <script src="./app.js?v=20260430-camera-motion-pulse-3"></script>
+    <script src="./app.js?v=20260504-pomodoro"></script>
   </body>
 </html>

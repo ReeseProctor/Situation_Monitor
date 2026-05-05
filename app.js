@@ -26,10 +26,17 @@ const state = {
   cameraUrl: config.cameraUrl || "http://camera.local/",
   layoutStorageKey: "situation-monitor-layout-v1",
   lifeSettingsStorageKey: "situation-monitor-life-settings-v1",
+  pomodoroSettingsStorageKey: "situation-monitor-pomodoro-settings-v1",
   lastSensorAt: null,
   layoutEdit: false,
   draggedModuleId: null,
   speedtestRunning: false,
+  pomodoroMode: "focus",
+  pomodoroRunning: false,
+  pomodoroRemainingSeconds: 25 * 60,
+  pomodoroTimer: null,
+  pomodoroSoundMuted: false,
+  pomodoroAudioContext: null,
   sensorTimer: null,
   marketTimer: null,
   cameraTimer: null,
@@ -58,6 +65,7 @@ const elements = {
   module05Status: document.querySelector("#module-05-status"),
   module06Status: document.querySelector("#module-06-status"),
   module07Status: document.querySelector("#module-07-status"),
+  module08Status: document.querySelector("#module-08-status"),
   sensorStatus: document.querySelector("#sensor-status"),
   sensorSource: document.querySelector("#sensor-source"),
   fieldCount: document.querySelector("#field-count"),
@@ -107,6 +115,24 @@ const elements = {
   funnyPhotoWrap: document.querySelector("#funny-photo-wrap"),
   funnyPhotoImage: document.querySelector("#funny-photo-image"),
   funnyPhotoCaption: document.querySelector("#funny-photo-caption"),
+  pomodoroStatus: document.querySelector("#pomodoro-status"),
+  pomodoroNote: document.querySelector("#pomodoro-note"),
+  pomodoroTime: document.querySelector("#pomodoro-time"),
+  pomodoroMode: document.querySelector("#pomodoro-mode"),
+  pomodoroFocusLength: document.querySelector("#pomodoro-focus-length"),
+  pomodoroBreakLength: document.querySelector("#pomodoro-break-length"),
+  pomodoroSoundState: document.querySelector("#pomodoro-sound-state"),
+  pomodoroNextMode: document.querySelector("#pomodoro-next-mode"),
+  pomodoroStartButton: document.querySelector("#pomodoro-start-button"),
+  pomodoroPauseButton: document.querySelector("#pomodoro-pause-button"),
+  pomodoroResetButton: document.querySelector("#pomodoro-reset-button"),
+  pomodoroMuteButton: document.querySelector("#pomodoro-mute-button"),
+  pomodoroSettingsButton: document.querySelector("#pomodoro-settings-button"),
+  pomodoroSettingsDialog: document.querySelector("#pomodoro-settings-dialog"),
+  pomodoroSettingsForm: document.querySelector("#pomodoro-settings-form"),
+  pomodoroSettingsCancel: document.querySelector("#pomodoro-settings-cancel"),
+  pomodoroFocusInput: document.querySelector("#pomodoro-focus-input"),
+  pomodoroBreakInput: document.querySelector("#pomodoro-break-input"),
   wifiStatus: document.querySelector("#wifi-status"),
   wifiNote: document.querySelector("#wifi-note"),
   wifiSpeed: document.querySelector("#wifi-speed"),
@@ -120,6 +146,9 @@ const elements = {
 };
 
 state.lifeSettings = loadLifeSettings();
+state.pomodoroSettings = loadPomodoroSettings();
+state.pomodoroSoundMuted = state.pomodoroSettings.soundMuted;
+state.pomodoroRemainingSeconds = state.pomodoroSettings.focusMinutes * 60;
 
 function getDashboardPanels() {
   return Array.from(elements.dashboard.querySelectorAll(".panel[data-module-id]"));
@@ -262,6 +291,45 @@ function persistLifeSettings(settings) {
 
   try {
     window.localStorage.setItem(state.lifeSettingsStorageKey, JSON.stringify(settings));
+  } catch (error) {
+    return;
+  }
+}
+
+function loadPomodoroSettings() {
+  const defaults = {
+    focusMinutes: 25,
+    breakMinutes: 5,
+    soundMuted: false
+  };
+
+  try {
+    const raw = window.localStorage.getItem(state.pomodoroSettingsStorageKey);
+    if (!raw) {
+      return defaults;
+    }
+
+    const parsed = JSON.parse(raw);
+    return {
+      focusMinutes: clamp(Number.parseInt(parsed?.focusMinutes, 10) || defaults.focusMinutes, 1, 180),
+      breakMinutes: clamp(Number.parseInt(parsed?.breakMinutes, 10) || defaults.breakMinutes, 1, 60),
+      soundMuted: parsed?.soundMuted === true
+    };
+  } catch (error) {
+    return defaults;
+  }
+}
+
+function persistPomodoroSettings(settings) {
+  state.pomodoroSettings = {
+    focusMinutes: clamp(Number.parseInt(settings.focusMinutes, 10) || 25, 1, 180),
+    breakMinutes: clamp(Number.parseInt(settings.breakMinutes, 10) || 5, 1, 60),
+    soundMuted: settings.soundMuted === true
+  };
+  state.pomodoroSoundMuted = state.pomodoroSettings.soundMuted;
+
+  try {
+    window.localStorage.setItem(state.pomodoroSettingsStorageKey, JSON.stringify(state.pomodoroSettings));
   } catch (error) {
     return;
   }
@@ -870,6 +938,182 @@ function handleLifeSettingsSubmit(event) {
   renderLifeProgress();
 }
 
+function formatPomodoroTime(totalSeconds) {
+  const safeSeconds = Math.max(0, Math.round(totalSeconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const seconds = safeSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function getPomodoroDurationSeconds(mode = state.pomodoroMode) {
+  const minutes = mode === "break"
+    ? state.pomodoroSettings.breakMinutes
+    : state.pomodoroSettings.focusMinutes;
+  return minutes * 60;
+}
+
+function renderPomodoro() {
+  const modeLabel = state.pomodoroMode === "break" ? "Break" : "Focus";
+  const nextModeLabel = state.pomodoroMode === "break" ? "Focus" : "Break";
+  const durationMinutes = state.pomodoroMode === "break"
+    ? state.pomodoroSettings.breakMinutes
+    : state.pomodoroSettings.focusMinutes;
+
+  setModuleStatus(elements.module08Status, true, "Module 08 online");
+  elements.pomodoroStatus.textContent = state.pomodoroRunning
+    ? `${modeLabel} running`
+    : `${modeLabel} paused`;
+  elements.pomodoroNote.textContent = state.pomodoroRunning
+    ? "Timer active"
+    : "Timer standing by";
+  elements.pomodoroTime.textContent = formatPomodoroTime(state.pomodoroRemainingSeconds);
+  elements.pomodoroMode.textContent = `${modeLabel} / ${durationMinutes} min`;
+  elements.pomodoroFocusLength.textContent = `${state.pomodoroSettings.focusMinutes} min`;
+  elements.pomodoroBreakLength.textContent = `${state.pomodoroSettings.breakMinutes} min`;
+  elements.pomodoroSoundState.textContent = state.pomodoroSoundMuted ? "Muted" : "On";
+  elements.pomodoroNextMode.textContent = nextModeLabel;
+  elements.pomodoroStartButton.disabled = state.pomodoroRunning;
+  elements.pomodoroPauseButton.disabled = !state.pomodoroRunning;
+  elements.pomodoroMuteButton.textContent = state.pomodoroSoundMuted ? "Unmute" : "Mute";
+  elements.pomodoroMuteButton.setAttribute("aria-pressed", state.pomodoroSoundMuted ? "true" : "false");
+}
+
+function startPomodoro() {
+  if (state.pomodoroRunning) {
+    return;
+  }
+
+  primePomodoroAudio();
+  state.pomodoroRunning = true;
+  clearInterval(state.pomodoroTimer);
+  state.pomodoroTimer = window.setInterval(tickPomodoro, 1000);
+  renderPomodoro();
+}
+
+function pausePomodoro() {
+  state.pomodoroRunning = false;
+  clearInterval(state.pomodoroTimer);
+  state.pomodoroTimer = null;
+  renderPomodoro();
+}
+
+function resetPomodoro() {
+  pausePomodoro();
+  state.pomodoroMode = "focus";
+  state.pomodoroRemainingSeconds = getPomodoroDurationSeconds("focus");
+  renderPomodoro();
+}
+
+function completePomodoroPhase() {
+  playPomodoroAlert();
+  state.pomodoroMode = state.pomodoroMode === "focus" ? "break" : "focus";
+  state.pomodoroRemainingSeconds = getPomodoroDurationSeconds(state.pomodoroMode);
+  state.pomodoroRunning = false;
+  clearInterval(state.pomodoroTimer);
+  state.pomodoroTimer = null;
+  renderPomodoro();
+  pulsePanel(elements.module08Status.closest(".panel"));
+}
+
+function tickPomodoro() {
+  state.pomodoroRemainingSeconds = Math.max(0, state.pomodoroRemainingSeconds - 1);
+  if (state.pomodoroRemainingSeconds <= 0) {
+    completePomodoroPhase();
+    return;
+  }
+
+  renderPomodoro();
+}
+
+function playPomodoroAlert() {
+  if (state.pomodoroSoundMuted) {
+    return;
+  }
+
+  const context = primePomodoroAudio();
+  if (!context) {
+    return;
+  }
+
+  const now = context.currentTime;
+
+  for (let index = 0; index < 3; index += 1) {
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(index === 1 ? 740 : 620, now + index * 0.28);
+    gain.gain.setValueAtTime(0.0001, now + index * 0.28);
+    gain.gain.exponentialRampToValueAtTime(0.22, now + index * 0.28 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + index * 0.28 + 0.18);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start(now + index * 0.28);
+    oscillator.stop(now + index * 0.28 + 0.2);
+  }
+}
+
+function primePomodoroAudio() {
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) {
+    return null;
+  }
+
+  const context = state.pomodoroAudioContext || new AudioContext();
+  state.pomodoroAudioContext = context;
+  if (context.state === "suspended") {
+    context.resume();
+  }
+
+  return context;
+}
+
+function togglePomodoroMute() {
+  persistPomodoroSettings({
+    ...state.pomodoroSettings,
+    soundMuted: !state.pomodoroSoundMuted
+  });
+  renderPomodoro();
+}
+
+function openPomodoroSettingsDialog() {
+  elements.pomodoroFocusInput.value = String(state.pomodoroSettings.focusMinutes);
+  elements.pomodoroBreakInput.value = String(state.pomodoroSettings.breakMinutes);
+
+  if (typeof elements.pomodoroSettingsDialog.showModal === "function") {
+    elements.pomodoroSettingsDialog.showModal();
+    return;
+  }
+
+  elements.pomodoroSettingsDialog.setAttribute("open", "open");
+}
+
+function closePomodoroSettingsDialog() {
+  if (typeof elements.pomodoroSettingsDialog.close === "function") {
+    elements.pomodoroSettingsDialog.close();
+    return;
+  }
+
+  elements.pomodoroSettingsDialog.removeAttribute("open");
+}
+
+function handlePomodoroSettingsSubmit(event) {
+  event.preventDefault();
+  const wasRunning = state.pomodoroRunning;
+  pausePomodoro();
+  persistPomodoroSettings({
+    focusMinutes: elements.pomodoroFocusInput.value,
+    breakMinutes: elements.pomodoroBreakInput.value,
+    soundMuted: state.pomodoroSoundMuted
+  });
+  state.pomodoroRemainingSeconds = getPomodoroDurationSeconds(state.pomodoroMode);
+  closePomodoroSettingsDialog();
+  renderPomodoro();
+
+  if (wasRunning) {
+    startPomodoro();
+  }
+}
+
 function pulsePanel(panel) {
   if (!panel) {
     return;
@@ -1375,6 +1619,13 @@ elements.lifeSettingsCancel.addEventListener("click", () => {
   closeLifeSettingsDialog();
 });
 elements.lifeSettingsForm.addEventListener("submit", handleLifeSettingsSubmit);
+elements.pomodoroStartButton.addEventListener("click", startPomodoro);
+elements.pomodoroPauseButton.addEventListener("click", pausePomodoro);
+elements.pomodoroResetButton.addEventListener("click", resetPomodoro);
+elements.pomodoroMuteButton.addEventListener("click", togglePomodoroMute);
+elements.pomodoroSettingsButton.addEventListener("click", openPomodoroSettingsDialog);
+elements.pomodoroSettingsCancel.addEventListener("click", closePomodoroSettingsDialog);
+elements.pomodoroSettingsForm.addEventListener("submit", handlePomodoroSettingsSubmit);
 elements.cameraRefreshButton.addEventListener("click", () => {
   refreshCameraFrame();
 });
@@ -1397,4 +1648,5 @@ loadSensorData();
 loadMarkets();
 requestWeather();
 runWifiSpeedtest();
+renderPomodoro();
 initializeCameraModule();
