@@ -827,15 +827,30 @@ body::before {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
   border-top: 1px solid var(--line);
   padding-top: 10px;
 }
 
 .pomodoro-panel__footer .panel-button {
-  padding-left: 8px;
-  padding-right: 8px;
+  padding-left: 10px;
+  padding-right: 10px;
+  font-size: 0.8rem;
+}
+
+.pomodoro-sound-toggle__control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  text-transform: uppercase;
+}
+
+.pomodoro-sound-toggle__control input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
 }
 
 .wifi-panel__intro {

@@ -126,13 +126,13 @@ const elements = {
   pomodoroStartButton: document.querySelector("#pomodoro-start-button"),
   pomodoroPauseButton: document.querySelector("#pomodoro-pause-button"),
   pomodoroResetButton: document.querySelector("#pomodoro-reset-button"),
-  pomodoroMuteButton: document.querySelector("#pomodoro-mute-button"),
   pomodoroSettingsButton: document.querySelector("#pomodoro-settings-button"),
   pomodoroSettingsDialog: document.querySelector("#pomodoro-settings-dialog"),
   pomodoroSettingsForm: document.querySelector("#pomodoro-settings-form"),
   pomodoroSettingsCancel: document.querySelector("#pomodoro-settings-cancel"),
   pomodoroFocusInput: document.querySelector("#pomodoro-focus-input"),
   pomodoroBreakInput: document.querySelector("#pomodoro-break-input"),
+  pomodoroMutedInput: document.querySelector("#pomodoro-muted-input"),
   wifiStatus: document.querySelector("#wifi-status"),
   wifiNote: document.querySelector("#wifi-note"),
   wifiSpeed: document.querySelector("#wifi-speed"),
@@ -974,8 +974,6 @@ function renderPomodoro() {
   elements.pomodoroNextMode.textContent = nextModeLabel;
   elements.pomodoroStartButton.disabled = state.pomodoroRunning;
   elements.pomodoroPauseButton.disabled = !state.pomodoroRunning;
-  elements.pomodoroMuteButton.textContent = state.pomodoroSoundMuted ? "Unmute" : "Mute";
-  elements.pomodoroMuteButton.setAttribute("aria-pressed", state.pomodoroSoundMuted ? "true" : "false");
 }
 
 function startPomodoro() {
@@ -1067,17 +1065,10 @@ function primePomodoroAudio() {
   return context;
 }
 
-function togglePomodoroMute() {
-  persistPomodoroSettings({
-    ...state.pomodoroSettings,
-    soundMuted: !state.pomodoroSoundMuted
-  });
-  renderPomodoro();
-}
-
 function openPomodoroSettingsDialog() {
   elements.pomodoroFocusInput.value = String(state.pomodoroSettings.focusMinutes);
   elements.pomodoroBreakInput.value = String(state.pomodoroSettings.breakMinutes);
+  elements.pomodoroMutedInput.checked = state.pomodoroSoundMuted;
 
   if (typeof elements.pomodoroSettingsDialog.showModal === "function") {
     elements.pomodoroSettingsDialog.showModal();
@@ -1103,7 +1094,7 @@ function handlePomodoroSettingsSubmit(event) {
   persistPomodoroSettings({
     focusMinutes: elements.pomodoroFocusInput.value,
     breakMinutes: elements.pomodoroBreakInput.value,
-    soundMuted: state.pomodoroSoundMuted
+    soundMuted: elements.pomodoroMutedInput.checked
   });
   state.pomodoroRemainingSeconds = getPomodoroDurationSeconds(state.pomodoroMode);
   closePomodoroSettingsDialog();
@@ -1622,7 +1613,6 @@ elements.lifeSettingsForm.addEventListener("submit", handleLifeSettingsSubmit);
 elements.pomodoroStartButton.addEventListener("click", startPomodoro);
 elements.pomodoroPauseButton.addEventListener("click", pausePomodoro);
 elements.pomodoroResetButton.addEventListener("click", resetPomodoro);
-elements.pomodoroMuteButton.addEventListener("click", togglePomodoroMute);
 elements.pomodoroSettingsButton.addEventListener("click", openPomodoroSettingsDialog);
 elements.pomodoroSettingsCancel.addEventListener("click", closePomodoroSettingsDialog);
 elements.pomodoroSettingsForm.addEventListener("submit", handlePomodoroSettingsSubmit);

@@ -313,7 +313,6 @@
             <button class="panel-button panel-button--compact" id="pomodoro-start-button" type="button">Start</button>
             <button class="panel-button panel-button--compact panel-button--ghost" id="pomodoro-pause-button" type="button">Pause</button>
             <button class="panel-button panel-button--compact panel-button--ghost" id="pomodoro-reset-button" type="button">Restart</button>
-            <button class="panel-button panel-button--compact panel-button--ghost" id="pomodoro-mute-button" type="button" aria-pressed="false">Mute</button>
           </div>
         </section>
 
@@ -410,6 +409,13 @@
           <span class="detail-term">Break length</span>
           <input class="life-dialog__input" id="pomodoro-break-input" name="breakMinutes" type="number" min="1" max="60" step="1" value="5" />
         </label>
+        <label class="life-dialog__field pomodoro-sound-toggle">
+          <span class="detail-term">Sound alert</span>
+          <span class="pomodoro-sound-toggle__control">
+            <input id="pomodoro-muted-input" name="soundMuted" type="checkbox" />
+            <span>Muted</span>
+          </span>
+        </label>
         <div class="life-dialog__actions">
           <button class="panel-button panel-button--compact panel-button--ghost" id="pomodoro-settings-cancel" type="button">Cancel</button>
           <button class="panel-button panel-button--compact" type="submit">Save settings</button>
@@ -430,6 +436,6 @@
         cameraUrl: "http://camera.local/"
       };
     </script>
-    <script src="./app.js?v=20260504-pomodoro"></script>
+    <script src="./app.js?v=20260504-pomodoro-controls"></script>
   </body>
 </html>
