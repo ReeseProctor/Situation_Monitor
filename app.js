@@ -27,6 +27,8 @@ const state = {
   layoutStorageKey: "situation-monitor-layout-v1",
   lifeSettingsStorageKey: "situation-monitor-life-settings-v1",
   pomodoroSettingsStorageKey: "situation-monitor-pomodoro-settings-v1",
+  notesStorageKey: "situation-monitor-notes-v1",
+  notesMaxLength: 300,
   lastSensorAt: null,
   layoutEdit: false,
   draggedModuleId: null,
@@ -66,6 +68,7 @@ const elements = {
   module06Status: document.querySelector("#module-06-status"),
   module07Status: document.querySelector("#module-07-status"),
   module08Status: document.querySelector("#module-08-status"),
+  module09Status: document.querySelector("#module-09-status"),
   sensorStatus: document.querySelector("#sensor-status"),
   sensorSource: document.querySelector("#sensor-source"),
   fieldCount: document.querySelector("#field-count"),
@@ -134,6 +137,11 @@ const elements = {
   pomodoroBreakInput: document.querySelector("#pomodoro-break-input"),
   pomodoroMutedInput: document.querySelector("#pomodoro-muted-input"),
   pomodoroTestSoundButton: document.querySelector("#pomodoro-test-sound-button"),
+  notesStatus: document.querySelector("#notes-status"),
+  notesCount: document.querySelector("#notes-count"),
+  notesInput: document.querySelector("#notes-input"),
+  notesSaveState: document.querySelector("#notes-save-state"),
+  notesClearButton: document.querySelector("#notes-clear-button"),
   wifiStatus: document.querySelector("#wifi-status"),
   wifiNote: document.querySelector("#wifi-note"),
   wifiSpeed: document.querySelector("#wifi-speed"),
@@ -334,6 +342,53 @@ function persistPomodoroSettings(settings) {
   } catch (error) {
     return;
   }
+}
+
+function loadStoredNote() {
+  try {
+    const raw = window.localStorage.getItem(state.notesStorageKey);
+    return typeof raw === "string" ? raw.slice(0, state.notesMaxLength) : "";
+  } catch (error) {
+    return "";
+  }
+}
+
+function persistNote(value) {
+  try {
+    window.localStorage.setItem(state.notesStorageKey, value);
+    elements.notesSaveState.textContent = value ? "Saved locally" : "Auto-saving locally";
+  } catch (error) {
+    elements.notesSaveState.textContent = "Unable to save";
+  }
+}
+
+function updateNotesModule(value = elements.notesInput.value) {
+  const note = value.slice(0, state.notesMaxLength);
+  if (note !== elements.notesInput.value) {
+    elements.notesInput.value = note;
+  }
+
+  elements.notesCount.textContent = `${note.length} / ${state.notesMaxLength}`;
+  elements.notesStatus.textContent = note ? "Draft active" : "Local note pad";
+  setModuleStatus(elements.module09Status, true, "Module 09 online");
+}
+
+function handleNoteInput() {
+  updateNotesModule();
+  persistNote(elements.notesInput.value);
+}
+
+function clearNote() {
+  elements.notesInput.value = "";
+  updateNotesModule();
+  persistNote("");
+  elements.notesInput.focus();
+}
+
+function initializeNotesModule() {
+  elements.notesInput.maxLength = state.notesMaxLength;
+  elements.notesInput.value = loadStoredNote();
+  updateNotesModule();
 }
 
 function loadCameraSnapshot() {
@@ -1617,6 +1672,7 @@ function initializeCameraModule() {
 
 bindLayoutEditor();
 loadSavedLayout();
+initializeNotesModule();
 
 elements.pageRefreshButton.addEventListener("click", () => {
   window.location.reload();
@@ -1640,6 +1696,8 @@ elements.pomodoroSettingsForm.addEventListener("submit", handlePomodoroSettingsS
 elements.pomodoroTestSoundButton.addEventListener("click", () => {
   void testPomodoroAlert();
 });
+elements.notesInput.addEventListener("input", handleNoteInput);
+elements.notesClearButton.addEventListener("click", clearNote);
 elements.cameraRefreshButton.addEventListener("click", () => {
   refreshCameraFrame();
 });

@@ -853,6 +853,75 @@ body::before {
   accent-color: var(--accent);
 }
 
+.notes-panel {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 16px;
+}
+
+.notes-panel__intro {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: end;
+}
+
+.notes-panel__intro > div {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.notes-panel__headline {
+  font-size: 1.08rem;
+  text-transform: uppercase;
+}
+
+.notes-panel__textarea {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 0;
+  resize: none;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  padding: 18px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.032) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.026) 1px, transparent 1px),
+    rgba(255, 255, 255, 0.018);
+  background-size: 18px 100%, 100% 18px, auto;
+  color: var(--text);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.55;
+  letter-spacing: 0.03em;
+  outline: none;
+}
+
+.notes-panel__textarea::placeholder {
+  color: var(--dim);
+  text-transform: uppercase;
+}
+
+.notes-panel__textarea:focus {
+  border-color: var(--line-strong);
+  box-shadow: inset 0 0 0 1px rgba(245, 241, 235, 0.12);
+}
+
+.notes-panel__footer {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(100px, 0.34fr);
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
 .wifi-panel__intro {
   position: relative;
   z-index: 1;
@@ -1503,8 +1572,17 @@ body::before {
     align-items: flex-start;
   }
 
+  .notes-panel__intro {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .pomodoro-detail-grid,
   .pomodoro-panel__footer {
+    grid-template-columns: 1fr;
+  }
+
+  .notes-panel__footer {
     grid-template-columns: 1fr;
   }
 

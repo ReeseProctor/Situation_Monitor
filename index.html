@@ -316,17 +316,32 @@
           </div>
         </section>
 
-        <section class="panel metric-panel placeholder-panel reveal" data-module-id="module-09">
+        <section class="panel metric-panel notes-panel reveal" data-module-id="module-09">
           <div class="panel-head">
             <p class="panel-label">Module 09</p>
             <div class="panel-head__meta">
               <span class="module-handle" aria-hidden="true">Drag</span>
-              <span class="status-light status-light--offline" aria-label="Module 09 offline"></span>
+              <span class="status-light status-light--offline" id="module-09-status" aria-label="Module 09 offline"></span>
             </div>
           </div>
-          <div class="placeholder-block">
-            <span class="placeholder-title">Reserved</span>
-            <span class="placeholder-copy">Additional module slot reserved for future use</span>
+          <div class="notes-panel__intro">
+            <div>
+              <span class="notes-panel__headline">Notes ready</span>
+              <span class="subtle" id="notes-status">Local note pad</span>
+            </div>
+            <span class="subtle" id="notes-count">0 / 300</span>
+          </div>
+          <textarea
+            class="notes-panel__textarea"
+            id="notes-input"
+            maxlength="300"
+            spellcheck="true"
+            aria-label="Module 09 note pad"
+            placeholder="Type a note..."
+          ></textarea>
+          <div class="notes-panel__footer">
+            <span class="subtle" id="notes-save-state">Auto-saving locally</span>
+            <button class="panel-button panel-button--compact panel-button--ghost" id="notes-clear-button" type="button">Clear</button>
           </div>
         </section>
 
@@ -437,6 +452,6 @@
         cameraUrl: "http://camera.local/"
       };
     </script>
-    <script src="./app.js?v=20260517-pomodoro-audio-test"></script>
+    <script src="./app.js?v=20260517-notes-module"></script>
   </body>
 </html>
