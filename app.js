@@ -133,6 +133,7 @@ const elements = {
   pomodoroFocusInput: document.querySelector("#pomodoro-focus-input"),
   pomodoroBreakInput: document.querySelector("#pomodoro-break-input"),
   pomodoroMutedInput: document.querySelector("#pomodoro-muted-input"),
+  pomodoroTestSoundButton: document.querySelector("#pomodoro-test-sound-button"),
   wifiStatus: document.querySelector("#wifi-status"),
   wifiNote: document.querySelector("#wifi-note"),
   wifiSpeed: document.querySelector("#wifi-speed"),
@@ -981,7 +982,7 @@ function startPomodoro() {
     return;
   }
 
-  primePomodoroAudio();
+  void primePomodoroAudio();
   state.pomodoroRunning = true;
   clearInterval(state.pomodoroTimer);
   state.pomodoroTimer = window.setInterval(tickPomodoro, 1000);
@@ -1003,7 +1004,7 @@ function resetPomodoro() {
 }
 
 function completePomodoroPhase() {
-  playPomodoroAlert();
+  void playPomodoroAlert();
   state.pomodoroMode = state.pomodoroMode === "focus" ? "break" : "focus";
   state.pomodoroRemainingSeconds = getPomodoroDurationSeconds(state.pomodoroMode);
   state.pomodoroRunning = false;
@@ -1023,13 +1024,14 @@ function tickPomodoro() {
   renderPomodoro();
 }
 
-function playPomodoroAlert() {
+async function playPomodoroAlert() {
   if (state.pomodoroSoundMuted) {
     return;
   }
 
-  const context = primePomodoroAudio();
+  const context = await primePomodoroAudio();
   if (!context) {
+    elements.pomodoroNote.textContent = "Audio unavailable";
     return;
   }
 
@@ -1050,7 +1052,7 @@ function playPomodoroAlert() {
   }
 }
 
-function primePomodoroAudio() {
+async function primePomodoroAudio() {
   const AudioContext = window.AudioContext || window.webkitAudioContext;
   if (!AudioContext) {
     return null;
@@ -1059,10 +1061,27 @@ function primePomodoroAudio() {
   const context = state.pomodoroAudioContext || new AudioContext();
   state.pomodoroAudioContext = context;
   if (context.state === "suspended") {
-    context.resume();
+    try {
+      await context.resume();
+    } catch (error) {
+      return null;
+    }
   }
 
   return context;
+}
+
+async function testPomodoroAlert() {
+  if (elements.pomodoroMutedInput.checked) {
+    elements.pomodoroNote.textContent = "Sound muted in settings";
+    return;
+  }
+
+  const wasMuted = state.pomodoroSoundMuted;
+  state.pomodoroSoundMuted = false;
+  await playPomodoroAlert();
+  state.pomodoroSoundMuted = wasMuted;
+  elements.pomodoroNote.textContent = "Sound test sent";
 }
 
 function openPomodoroSettingsDialog() {
@@ -1616,6 +1635,9 @@ elements.pomodoroResetButton.addEventListener("click", resetPomodoro);
 elements.pomodoroSettingsButton.addEventListener("click", openPomodoroSettingsDialog);
 elements.pomodoroSettingsCancel.addEventListener("click", closePomodoroSettingsDialog);
 elements.pomodoroSettingsForm.addEventListener("submit", handlePomodoroSettingsSubmit);
+elements.pomodoroTestSoundButton.addEventListener("click", () => {
+  void testPomodoroAlert();
+});
 elements.cameraRefreshButton.addEventListener("click", () => {
   refreshCameraFrame();
 });
