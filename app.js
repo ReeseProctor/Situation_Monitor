@@ -1037,19 +1037,21 @@ async function playPomodoroAlert() {
 
   const now = context.currentTime;
 
-  for (let index = 0; index < 3; index += 1) {
+  const tones = [620, 740, 620, 740, 620, 740, 620, 740];
+  tones.forEach((frequency, index) => {
+    const startTime = now + index * 0.32;
     const oscillator = context.createOscillator();
     const gain = context.createGain();
     oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(index === 1 ? 740 : 620, now + index * 0.28);
-    gain.gain.setValueAtTime(0.0001, now + index * 0.28);
-    gain.gain.exponentialRampToValueAtTime(0.22, now + index * 0.28 + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + index * 0.28 + 0.18);
+    oscillator.frequency.setValueAtTime(frequency, startTime);
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.22, startTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.22);
     oscillator.connect(gain);
     gain.connect(context.destination);
-    oscillator.start(now + index * 0.28);
-    oscillator.stop(now + index * 0.28 + 0.2);
-  }
+    oscillator.start(startTime);
+    oscillator.stop(startTime + 0.24);
+  });
 }
 
 async function primePomodoroAudio() {
